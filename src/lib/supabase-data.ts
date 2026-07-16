@@ -1,9 +1,11 @@
-import type { DayLog, MealEntry, PlanPreferences, Profile } from '../types'
+import type { DayLog, MealEntry, PlanPreferences, Profile, Subscription } from '../types'
 import { supabase } from './supabase'
 
 export interface UserState {
   profile: Profile | null
   planPreferences: PlanPreferences | null
+  subscription: Subscription | null
+  billingEnabled: boolean
   log: DayLog
 }
 
@@ -30,6 +32,7 @@ function profileFromRow(row: Record<string, unknown>): Profile {
 
 function planFromRow(row: Record<string, unknown>): PlanPreferences {
   return {
+    planMode: (row.plan_mode || 'guided') as PlanPreferences['planMode'],
     dietaryStyle: row.dietary_style as PlanPreferences['dietaryStyle'],
     mealsPerDay: Number(row.meals_per_day) as PlanPreferences['mealsPerDay'],
     restrictions: Array.isArray(row.restrictions) ? row.restrictions.map(String) : [],
@@ -60,19 +63,28 @@ function mealFromRow(row: Record<string, unknown>): MealEntry {
 
 export async function loadUserState(userId: string, date: string): Promise<UserState> {
   const db = client()
-  const [profileResult, planResult, dayResult] = await Promise.all([
+  const [profileResult, planResult, subscriptionResult, billingResult, dayResult] = await Promise.all([
     db.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
     db.from('plan_preferences').select('*').eq('user_id', userId).maybeSingle(),
+    db.from('subscriptions').select('plan_mode, status, current_period_end, cancel_at_period_end').eq('user_id', userId).maybeSingle(),
+    db.rpc('is_billing_enabled'),
     db.from('day_logs').select('id, log_date, workout_done, meal_entries(*)').eq('user_id', userId).eq('log_date', date).maybeSingle(),
   ])
 
-  const error = profileResult.error || planResult.error || dayResult.error
+  const error = profileResult.error || planResult.error || subscriptionResult.error || billingResult.error || dayResult.error
   if (error) throw error
 
   const day = dayResult.data as (Record<string, unknown> & { meal_entries?: Record<string, unknown>[] }) | null
   return {
     profile: profileResult.data ? profileFromRow(profileResult.data) : null,
     planPreferences: planResult.data ? planFromRow(planResult.data) : null,
+    subscription: subscriptionResult.data ? {
+      planMode: subscriptionResult.data.plan_mode as Subscription['planMode'],
+      status: subscriptionResult.data.status as Subscription['status'],
+      currentPeriodEnd: subscriptionResult.data.current_period_end,
+      cancelAtPeriodEnd: Boolean(subscriptionResult.data.cancel_at_period_end),
+    } : null,
+    billingEnabled: Boolean(billingResult.data),
     log: {
       date,
       workoutDone: Boolean(day?.workout_done),
@@ -102,6 +114,7 @@ export async function upsertProfile(userId: string, profile: Profile) {
 export async function upsertPlanPreferences(userId: string, plan: PlanPreferences) {
   const { error } = await client().from('plan_preferences').upsert({
     user_id: userId,
+    plan_mode: plan.planMode,
     dietary_style: plan.dietaryStyle,
     meals_per_day: plan.mealsPerDay,
     restrictions: plan.restrictions,
@@ -134,6 +147,8 @@ export async function deletePlanPreferences(userId: string) {
   const db = client()
   const { error: generatedError } = await db.from('generated_plans').delete().eq('user_id', userId)
   if (generatedError) throw generatedError
+  const { error: selfPlanError } = await db.from('self_plans').delete().eq('user_id', userId)
+  if (selfPlanError) throw selfPlanError
   const { error } = await db.from('plan_preferences').delete().eq('user_id', userId)
   if (error) throw error
 }
@@ -142,6 +157,8 @@ export async function deleteUserData(userId: string) {
   const db = client()
   const { error: generatedError } = await db.from('generated_plans').delete().eq('user_id', userId)
   if (generatedError) throw generatedError
+  const { error: selfPlanError } = await db.from('self_plans').delete().eq('user_id', userId)
+  if (selfPlanError) throw selfPlanError
   const { error: daysError } = await db.from('day_logs').delete().eq('user_id', userId)
   if (daysError) throw daysError
   const { error: planError } = await db.from('plan_preferences').delete().eq('user_id', userId)

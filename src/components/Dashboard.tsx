@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Activity, Apple, CalendarDays, Check, ChevronRight, CircleUserRound, Clock3, Droplets, Dumbbell, Flame, Home, Info, Leaf, Menu, Moon, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
 import { calculatePlan, consumedMacros, dailyActivityLabels, goalLabels, intensityLabels } from '../lib/nutrition'
-import type { AppTheme, DayLog, MealEntry, PlanPreferences, Profile } from '../types'
+import type { AppTheme, DayLog, MealEntry, PlanPreferences, Profile, Subscription } from '../types'
 import { AddMealModal } from './AddMealModal'
 import { Logo } from './Logo'
 import { PlanExperience } from './PlanExperience'
@@ -10,6 +10,9 @@ interface Props {
   profile: Profile
   log: DayLog
   planPreferences: PlanPreferences | null
+  subscription: Subscription | null
+  onSubscriptionChange: (subscription: Subscription | null) => void
+  billingEnabled: boolean
   theme: AppTheme
   onThemeChange: (theme: AppTheme) => void
   onLogChange: (log: DayLog) => void
@@ -43,7 +46,7 @@ function ProgressRing({ value, total }: { value: number; total: number }) {
   )
 }
 
-export function Dashboard({ profile, log, planPreferences, theme, onThemeChange, onLogChange, onPlanComplete, onResetPlan, onEditProfile, onReset, onSignOut, syncStatus = 'idle', syncMessage = '' }: Props) {
+export function Dashboard({ profile, log, planPreferences, subscription, onSubscriptionChange, billingEnabled, theme, onThemeChange, onLogChange, onPlanComplete, onResetPlan, onEditProfile, onReset, onSignOut, syncStatus = 'idle', syncMessage = '' }: Props) {
   const [view, setView] = useState<View>('today')
   const [mealModal, setMealModal] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
@@ -119,7 +122,7 @@ export function Dashboard({ profile, log, planPreferences, theme, onThemeChange,
         )}
 
         {view === 'plan' && (
-          <PlanExperience profile={profile} nutrition={plan} preferences={planPreferences} onComplete={onPlanComplete} onReset={onResetPlan} />
+          <PlanExperience profile={profile} nutrition={plan} preferences={planPreferences} subscription={subscription} billingEnabled={billingEnabled} onSubscriptionChange={onSubscriptionChange} onComplete={onPlanComplete} onReset={onResetPlan} />
         )}
 
         {view === 'profile' && (

@@ -6,7 +6,7 @@ import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
 import { deletePlanPreferences, deleteUserData, loadUserState, replaceDayLog, upsertPlanPreferences, upsertProfile } from './lib/supabase-data'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
-import type { AppTheme, DayLog, PlanPreferences, Profile } from './types'
+import type { AppTheme, DayLog, PlanPreferences, Profile, Subscription } from './types'
 
 const PROFILE_KEY = 'vivameta:profile'
 const LOGS_KEY = 'vivameta:logs'
@@ -23,6 +23,8 @@ export default function App() {
   const [editing, setEditing] = useState(false)
   const [logs, setLogs] = useState<Record<string, DayLog>>(() => isSupabaseConfigured ? {} : readLocal<Record<string, DayLog>>(LOGS_KEY) || {})
   const [planPreferences, setPlanPreferences] = useState<PlanPreferences | null>(() => isSupabaseConfigured ? null : readLocal<PlanPreferences>(PLAN_KEY))
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [billingEnabled, setBillingEnabled] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured)
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
@@ -54,6 +56,8 @@ export default function App() {
       if (!nextSession) {
         setProfile(null)
         setPlanPreferences(null)
+        setSubscription(null)
+        setBillingEnabled(false)
         setLogs({})
         setLoadedUserId(null)
       }
@@ -70,6 +74,8 @@ export default function App() {
         setProfile(state.profile)
         if (state.profile?.theme) setTheme(state.profile.theme)
         setPlanPreferences(state.planPreferences)
+        setSubscription(state.subscription)
+        setBillingEnabled(state.billingEnabled)
         setLogs({ [date]: state.log })
         setSyncStatus('idle')
         setSyncMessage('')
@@ -130,7 +136,10 @@ export default function App() {
   function resetPlanPreferences() {
     setPlanPreferences(null)
     if (session) queueRemote(() => deletePlanPreferences(session.user.id))
-    else localStorage.removeItem(PLAN_KEY)
+    else {
+      localStorage.removeItem(PLAN_KEY)
+      localStorage.removeItem('vivameta:self-planner')
+    }
   }
 
   function reset() {
@@ -143,6 +152,7 @@ export default function App() {
       localStorage.removeItem(PROFILE_KEY)
       localStorage.removeItem(LOGS_KEY)
       localStorage.removeItem(PLAN_KEY)
+      localStorage.removeItem('vivameta:self-planner')
     }
   }
 
@@ -158,5 +168,5 @@ export default function App() {
   if (!profile || editing) {
     return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
   }
-  return <Dashboard profile={profile} log={log} planPreferences={planPreferences} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
+  return <Dashboard profile={profile} log={log} planPreferences={planPreferences} subscription={subscription} onSubscriptionChange={setSubscription} billingEnabled={billingEnabled} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
 }

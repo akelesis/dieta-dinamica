@@ -184,6 +184,13 @@ Deno.serve(async request => {
   if (!auth?.data.user || auth.error) {
     return json({ error: 'UNAUTHORIZED', message: 'Entre na sua conta para gerar o plano alimentar.' }, 401)
   }
+  const [{ data: billing }, { data: entitlement }] = await Promise.all([
+    admin.from('billing_configuration').select('enabled').eq('singleton', true).maybeSingle(),
+    admin.from('subscriptions').select('status, plan_mode').eq('user_id', auth.data.user.id).maybeSingle(),
+  ])
+  if (billing?.enabled && (!entitlement || !['active', 'trialing'].includes(entitlement.status) || entitlement.plan_mode !== 'guided')) {
+    return json({ error: 'SUBSCRIPTION_REQUIRED', message: 'O plano personalizado requer uma assinatura ativa.' }, 402)
+  }
 
   const parsed = RequestInput.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {

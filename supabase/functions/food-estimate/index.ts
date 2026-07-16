@@ -39,7 +39,15 @@ Deno.serve(async request => {
   const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const admin = createClient(supabaseUrl, secretKey() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-  if (!token || (await admin.auth.getUser(token)).error) return json({ error: 'UNAUTHORIZED', message: 'Entre na sua conta para analisar alimentos.' }, 401)
+  const auth = token ? await admin.auth.getUser(token) : null
+  if (!auth?.data.user || auth.error) return json({ error: 'UNAUTHORIZED', message: 'Entre na sua conta para analisar alimentos.' }, 401)
+  const [{ data: billing }, { data: entitlement }] = await Promise.all([
+    admin.from('billing_configuration').select('enabled').eq('singleton', true).maybeSingle(),
+    admin.from('subscriptions').select('status').eq('user_id', auth.data.user.id).maybeSingle(),
+  ])
+  if (billing?.enabled && (!entitlement || !['active', 'trialing'].includes(entitlement.status))) {
+    return json({ error: 'SUBSCRIPTION_REQUIRED', message: 'A estimativa automática de alimentos requer uma assinatura ativa.' }, 402)
+  }
 
   const body = await request.json().catch(() => ({}))
   const description = body && typeof body === 'object' && 'description' in body ? body.description : ''

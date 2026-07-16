@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Activity, AlertCircle, ArrowLeft, ArrowRight, Check, ChefHat, Clock3, Coins, HeartPulse, Info, Leaf, LoaderCircle, Pencil, Plus, RefreshCw, Repeat2, Salad, ShieldCheck, Sparkles, Target, Trash2, UtensilsCrossed, WalletCards, X } from 'lucide-react'
+import { Activity, AlertCircle, ArrowLeft, ArrowRight, BadgeCheck, Calculator, Check, ChefHat, Clock3, Coins, CreditCard, Crown, HeartPulse, Info, Leaf, LoaderCircle, LockKeyhole, Pencil, Plus, RefreshCw, Repeat2, Salad, ShieldCheck, Sparkles, Target, Trash2, UtensilsCrossed, WalletCards, X } from 'lucide-react'
+import { isSubscriptionActive, loadCurrentSubscription, openBillingPortal, startSubscriptionCheckout } from '../lib/billing'
 import { goalLabels } from '../lib/nutrition'
 import { estimateFoodWithOpenAI } from '../lib/openai'
 import { generateNutritionPlan, saveCustomizedNutritionPlan, suggestMealSwaps } from '../lib/plan-ai'
-import type { DietaryStyle, FoodBudget, GeneratedMeal, GeneratedPlanResponse, HealthCondition, MealSwapSuggestion, NutritionPlan, PlanIngredient, PlanPreferences, Profile } from '../types'
+import type { DietaryStyle, FoodBudget, GeneratedMeal, GeneratedPlanResponse, HealthCondition, MealSwapSuggestion, NutritionPlan, PlanIngredient, PlanMode, PlanPreferences, Profile, Subscription } from '../types'
+import { SelfPlanner } from './SelfPlanner'
 
 interface Props {
   profile: Profile
   nutrition: NutritionPlan
   preferences: PlanPreferences | null
+  subscription: Subscription | null
+  billingEnabled: boolean
+  onSubscriptionChange: (subscription: Subscription | null) => void
   onComplete: (preferences: PlanPreferences) => void
   onReset: () => void
 }
@@ -32,39 +37,124 @@ const healthConditionOptions: { id: HealthCondition; label: string }[] = [
 const budgetLabels: Record<FoodBudget, string> = { economy: 'Econômico', balanced: 'Equilibrado', flexible: 'Flexível' }
 const styleLabels: Record<DietaryStyle, string> = { omnivore: 'Onívora', vegetarian: 'Vegetariana', vegan: 'Vegana', pescatarian: 'Pescetariana' }
 
-function PlanOnboarding({ profile, onComplete }: Pick<Props, 'profile' | 'onComplete'>) {
+function PlanOnboarding({ profile, onComplete, forcedMode }: Pick<Props, 'profile' | 'onComplete'> & { forcedMode?: PlanMode }) {
   const [step, setStep] = useState(0)
+  const [modeChosen, setModeChosen] = useState(Boolean(forcedMode))
   const [data, setData] = useState<Omit<PlanPreferences, 'completedAt'>>({
-    dietaryStyle: 'omnivore', mealsPerDay: 4, restrictions: [], favoriteFoods: '', dislikedFoods: '', cookingTime: 'moderate', budget: 'balanced', breakfastTime: '07:30', lunchTime: '12:30', dinnerTime: '19:30', hasHealthCondition: false, healthConditions: [], healthNotes: '',
+    planMode: forcedMode || 'self', dietaryStyle: 'omnivore', mealsPerDay: 4, restrictions: [], favoriteFoods: '', dislikedFoods: '', cookingTime: 'moderate', budget: 'balanced', breakfastTime: '07:30', lunchTime: '12:30', dinnerTime: '19:30', hasHealthCondition: false, healthConditions: [], healthNotes: '',
   })
   const set = <K extends keyof typeof data>(key: K, value: (typeof data)[K]) => setData(previous => ({ ...previous, [key]: value }))
   const toggleRestriction = (restriction: string) => set('restrictions', data.restrictions.includes(restriction) ? data.restrictions.filter(item => item !== restriction) : [...data.restrictions, restriction])
   const toggleHealthCondition = (condition: HealthCondition) => set('healthConditions', data.healthConditions.includes(condition) ? data.healthConditions.filter(item => item !== condition) : [...data.healthConditions, condition])
   const canContinue = step !== 1 || !data.hasHealthCondition || data.healthConditions.length > 0
-  const finish = () => onComplete({ ...data, healthConditions: data.hasHealthCondition ? data.healthConditions : [], healthNotes: data.hasHealthCondition ? data.healthNotes.trim() : '', completedAt: new Date().toISOString() })
+  const finish = () => onComplete({ ...data, hasHealthCondition: data.planMode === 'guided' && data.hasHealthCondition, healthConditions: data.planMode === 'guided' && data.hasHealthCondition ? data.healthConditions : [], healthNotes: data.planMode === 'guided' && data.hasHealthCondition ? data.healthNotes.trim() : '', completedAt: new Date().toISOString() })
+
+  const chooseMode = (planMode: PlanMode) => {
+    setData(previous => ({ ...previous, planMode, hasHealthCondition: false, healthConditions: [], healthNotes: '' }))
+    setModeChosen(true)
+  }
+
+  if (!modeChosen) return <section className="plan-onboarding plan-mode-onboarding">
+    <div className="plan-onboarding-intro"><span className="date-label"><Salad size={15} /> Meu plano</span><h1>Como você quer organizar sua alimentação?</h1><p>Escolha a experiência mais adequada. Você poderá trocar de modalidade depois.</p></div>
+    <div className="plan-mode-grid">
+      <button type="button" className="plan-mode-card featured" onClick={() => chooseMode('self')}><span className="plan-mode-icon"><Calculator size={25} /></span><span className="plan-mode-badge">Plano básico</span><h2>Planejador pessoal</h2><p>Você monta cada refeição. O VivaMeta calcula calorias e macros para ajudar na organização das suas metas.</p><ul><li><Check size={14} /> Refeições totalmente editáveis</li><li><Check size={14} /> Estimativas nutricionais automáticas</li><li><Check size={14} /> Comparação com referências diárias</li></ul><strong>Montar por conta própria <ArrowRight size={16} /></strong></button>
+      <button type="button" className="plan-mode-card" onClick={() => chooseMode('guided')}><span className="plan-mode-icon premium"><Crown size={25} /></span><span className="plan-mode-badge premium">Plano acompanhado</span><h2>Plano personalizado</h2><p>Mantém a experiência atual com refeições, porções e personalizações em uma estrutura individualizada.</p><ul><li><Check size={14} /> Plano alimentar estruturado</li><li><Check size={14} /> Sugestões de substituição</li><li><ShieldCheck size={14} /> Revisão profissional recomendada</li></ul><strong>Continuar para personalização <ArrowRight size={16} /></strong></button>
+    </div>
+    <div className="self-planner-notice compact"><Info size={17} /><div><strong>O plano básico é uma ferramenta de organização.</strong><span>Ele não escolhe alimentos nem cria uma dieta para você.</span></div></div>
+  </section>
 
   return (
     <section className="plan-onboarding">
       <div className="plan-onboarding-intro">
-        <span className="date-label"><Sparkles size={15} /> Plano individualizado</span>
-        <h1>Vamos construir seu plano, {profile.name.split(' ')[0]}.</h1>
-        <p>Suas preferências transformam a meta calórica em uma rotina alimentar possível de seguir.</p>
+        <span className="date-label">{data.planMode === 'self' ? <><Calculator size={15} /> Planejador pessoal</> : <><Sparkles size={15} /> Plano individualizado</>}</span>
+        <h1>{data.planMode === 'self' ? `Prepare seu planejador, ${profile.name.split(' ')[0]}.` : `Vamos construir seu plano, ${profile.name.split(' ')[0]}.`}</h1>
+        <p>{data.planMode === 'self' ? 'Defina apenas a estrutura da sua rotina; você escolherá todos os alimentos depois.' : 'Suas preferências transformam a meta calórica em uma rotina alimentar possível de seguir.'}</p>
       </div>
       <div className="plan-progress"><div><span>Etapa {step + 1} de 4</span><b>{['Alimentação', 'Cuidados', 'Rotina', 'Horários'][step]}</b></div><div className="plan-progress-track"><i style={{ width: `${(step + 1) * 25}%` }} /></div></div>
 
       <div className="plan-question-card">
         {step === 0 && <div className="plan-step"><span className="plan-step-icon"><Salad size={23} /></span><h2>Como é a sua alimentação?</h2><p>Escolha o estilo que mais representa sua rotina atual.</p><div className="diet-style-grid">{dietaryStyles.map(style => <button type="button" key={style.id} className={data.dietaryStyle === style.id ? 'selected' : ''} onClick={() => set('dietaryStyle', style.id)}><span>{style.icon}</span><div><strong>{style.title}</strong><small>{style.text}</small></div>{data.dietaryStyle === style.id && <i><Check size={13} /></i>}</button>)}</div></div>}
 
-        {step === 1 && <div className="plan-step"><span className="plan-step-icon"><ShieldCheck size={23} /></span><h2>Existe algo que devemos evitar?</h2><p>Marque alergias ou restrições. Você pode deixar tudo desmarcado.</p><div className="restriction-grid">{restrictionOptions.map(item => <button type="button" key={item} className={data.restrictions.includes(item) ? 'selected' : ''} onClick={() => toggleRestriction(item)}><span>{data.restrictions.includes(item) && <Check size={13} />}</span>{item}</button>)}</div><div className="health-question"><div><HeartPulse size={20} /><span><strong>Possui condição de saúde ou usa medicação contínua?</strong><small>Essa informação define se a geração automática é segura.</small></span></div><div className="binary-choice"><button type="button" className={!data.hasHealthCondition ? 'selected' : ''} onClick={() => setData(previous => ({ ...previous, hasHealthCondition: false, healthConditions: [], healthNotes: '' }))}>Não</button><button type="button" className={data.hasHealthCondition ? 'selected' : ''} onClick={() => set('hasHealthCondition', true)}>Sim</button></div></div>{data.hasHealthCondition && <div className="health-condition-fields"><div><span className="field-label">Selecione a condição informada</span><div className="health-condition-grid">{healthConditionOptions.map(condition => <button type="button" key={condition.id} className={data.healthConditions.includes(condition.id) ? 'selected' : ''} onClick={() => toggleHealthCondition(condition.id)}><span>{data.healthConditions.includes(condition.id) && <Check size={12} />}</span>{condition.label}</button>)}</div></div>{data.healthConditions.includes('kidney_disease') && <div className="renal-safety-note"><AlertCircle size={17} /><div><strong>Esta condição exige plano clínico individualizado</strong><span>Não geraremos uma dieta renal automática sem estágio da doença, exames de potássio e orientação sobre diálise, proteína e líquidos.</span></div></div>}<label className="field"><span>Observação opcional para seu cadastro</span><textarea rows={2} placeholder="Não inclua exames, documentos ou outros dados sensíveis." value={data.healthNotes} onChange={event => set('healthNotes', event.target.value)} /></label></div>}</div>}
+        {step === 1 && <div className="plan-step"><span className="plan-step-icon"><ShieldCheck size={23} /></span><h2>Existe algo que você evita?</h2><p>{data.planMode === 'self' ? 'Essas marcações ficam visíveis como lembrete pessoal no planejador.' : 'Marque alergias ou restrições. Você pode deixar tudo desmarcado.'}</p><div className="restriction-grid">{restrictionOptions.map(item => <button type="button" key={item} className={data.restrictions.includes(item) ? 'selected' : ''} onClick={() => toggleRestriction(item)}><span>{data.restrictions.includes(item) && <Check size={13} />}</span>{item}</button>)}</div>{data.planMode === 'guided' && <><div className="health-question"><div><HeartPulse size={20} /><span><strong>Possui condição de saúde ou usa medicação contínua?</strong><small>Essa informação define se a geração automática é segura.</small></span></div><div className="binary-choice"><button type="button" className={!data.hasHealthCondition ? 'selected' : ''} onClick={() => setData(previous => ({ ...previous, hasHealthCondition: false, healthConditions: [], healthNotes: '' }))}>Não</button><button type="button" className={data.hasHealthCondition ? 'selected' : ''} onClick={() => set('hasHealthCondition', true)}>Sim</button></div></div>{data.hasHealthCondition && <div className="health-condition-fields"><div><span className="field-label">Selecione a condição informada</span><div className="health-condition-grid">{healthConditionOptions.map(condition => <button type="button" key={condition.id} className={data.healthConditions.includes(condition.id) ? 'selected' : ''} onClick={() => toggleHealthCondition(condition.id)}><span>{data.healthConditions.includes(condition.id) && <Check size={12} />}</span>{condition.label}</button>)}</div></div>{data.healthConditions.includes('kidney_disease') && <div className="renal-safety-note"><AlertCircle size={17} /><div><strong>Esta condição exige plano clínico individualizado</strong><span>Não geraremos uma dieta renal automática sem estágio da doença, exames de potássio e orientação sobre diálise, proteína e líquidos.</span></div></div>}<label className="field"><span>Observação opcional para seu cadastro</span><textarea rows={2} placeholder="Não inclua exames, documentos ou outros dados sensíveis." value={data.healthNotes} onChange={event => set('healthNotes', event.target.value)} /></label></div>}</>}</div>}
 
         {step === 2 && <div className="plan-step"><span className="plan-step-icon"><ChefHat size={23} /></span><h2>Qual plano cabe na sua rotina?</h2><p>A melhor estratégia é aquela que você consegue repetir.</p><div className="plan-form-row"><div className="plan-control"><span><UtensilsCrossed size={16} /> Refeições por dia</span><div className="number-choice">{([3, 4, 5, 6] as const).map(number => <button key={number} className={data.mealsPerDay === number ? 'selected' : ''} onClick={() => set('mealsPerDay', number)}>{number}</button>)}</div></div><div className="plan-control"><span><Clock3 size={16} /> Tempo para cozinhar</span><div className="stack-choice"><button className={data.cookingTime === 'quick' ? 'selected' : ''} onClick={() => set('cookingTime', 'quick')}><b>Até 15 min</b><small>Praticidade acima de tudo</small></button><button className={data.cookingTime === 'moderate' ? 'selected' : ''} onClick={() => set('cookingTime', 'moderate')}><b>Até 30 min</b><small>Um pouco de preparo</small></button><button className={data.cookingTime === 'flexible' ? 'selected' : ''} onClick={() => set('cookingTime', 'flexible')}><b>Sem limite</b><small>Gosto de cozinhar</small></button></div></div></div><div className="budget-control"><span><Coins size={16} /> Orçamento para alimentação</span><div>{(['economy', 'balanced', 'flexible'] as const).map(item => <button key={item} className={data.budget === item ? 'selected' : ''} onClick={() => set('budget', item)}><WalletCards size={16} />{budgetLabels[item]}</button>)}</div></div></div>}
 
-        {step === 3 && <div className="plan-step"><span className="plan-step-icon"><Clock3 size={23} /></span><h2>Últimos detalhes da sua rotina</h2><p>Use horários aproximados. O plano continua flexível.</p><div className="time-grid"><label className="field"><span>Café da manhã</span><input type="time" value={data.breakfastTime} onChange={event => set('breakfastTime', event.target.value)} /></label><label className="field"><span>Almoço</span><input type="time" value={data.lunchTime} onChange={event => set('lunchTime', event.target.value)} /></label><label className="field"><span>Jantar</span><input type="time" value={data.dinnerTime} onChange={event => set('dinnerTime', event.target.value)} /></label></div><div className="preference-grid"><label className="field"><span>Alimentos que você gosta</span><textarea rows={3} placeholder="Ex.: arroz, feijão, banana, frango..." value={data.favoriteFoods} onChange={event => set('favoriteFoods', event.target.value)} /></label><label className="field"><span>Alimentos que prefere evitar</span><textarea rows={3} placeholder="Ex.: brócolis, peixe, abacate..." value={data.dislikedFoods} onChange={event => set('dislikedFoods', event.target.value)} /></label></div><div className="plan-ready-note"><Sparkles size={18} /><div><strong>Tudo pronto para personalizar</strong><span>Vamos combinar seu objetivo, gasto energético, rotina e preferências.</span></div></div></div>}
+        {step === 3 && <div className="plan-step"><span className="plan-step-icon"><Clock3 size={23} /></span><h2>Últimos detalhes da sua rotina</h2><p>Use horários aproximados. O plano continua flexível.</p><div className="time-grid"><label className="field"><span>Café da manhã</span><input type="time" value={data.breakfastTime} onChange={event => set('breakfastTime', event.target.value)} /></label><label className="field"><span>Almoço</span><input type="time" value={data.lunchTime} onChange={event => set('lunchTime', event.target.value)} /></label><label className="field"><span>Jantar</span><input type="time" value={data.dinnerTime} onChange={event => set('dinnerTime', event.target.value)} /></label></div><div className="preference-grid"><label className="field"><span>Alimentos que você gosta</span><textarea rows={3} placeholder="Ex.: arroz, feijão, banana, frango..." value={data.favoriteFoods} onChange={event => set('favoriteFoods', event.target.value)} /></label><label className="field"><span>Alimentos que prefere evitar</span><textarea rows={3} placeholder="Ex.: brócolis, peixe, abacate..." value={data.dislikedFoods} onChange={event => set('dislikedFoods', event.target.value)} /></label></div><div className="plan-ready-note">{data.planMode === 'self' ? <Calculator size={18} /> : <Sparkles size={18} />}<div><strong>{data.planMode === 'self' ? 'Sua estrutura está pronta' : 'Tudo pronto para personalizar'}</strong><span>{data.planMode === 'self' ? 'Agora você poderá preencher e editar cada refeição por conta própria.' : 'Vamos combinar seu objetivo, gasto energético, rotina e preferências.'}</span></div></div></div>}
       </div>
 
-      <div className="plan-onboarding-actions"><button className="button ghost" disabled={step === 0} onClick={() => setStep(value => value - 1)}><ArrowLeft size={17} /> Voltar</button>{step < 3 ? <button className="button primary" disabled={!canContinue} onClick={() => setStep(value => value + 1)}>Continuar <ArrowRight size={17} /></button> : <button className="button primary" onClick={finish}>Construir meu plano <Sparkles size={17} /></button>}</div>
+      <div className="plan-onboarding-actions"><button className="button ghost" disabled={step === 0 && Boolean(forcedMode)} onClick={() => step === 0 ? setModeChosen(false) : setStep(value => value - 1)}><ArrowLeft size={17} /> Voltar</button>{step < 3 ? <button className="button primary" disabled={!canContinue} onClick={() => setStep(value => value + 1)}>Continuar <ArrowRight size={17} /></button> : <button className="button primary" onClick={finish}>{data.planMode === 'self' ? <>Abrir meu planejador <Calculator size={17} /></> : <>Construir meu plano <Sparkles size={17} /></>}</button>}</div>
     </section>
   )
+}
+
+function PricingScreen({ subscription, onSubscriptionChange }: Pick<Props, 'subscription' | 'onSubscriptionChange'>) {
+  const checkoutState = new URLSearchParams(window.location.search).get('checkout')
+  const [busy, setBusy] = useState<PlanMode | 'portal' | ''>('')
+  const [message, setMessage] = useState('')
+  const [checking, setChecking] = useState(checkoutState === 'success')
+
+  useEffect(() => {
+    if (checkoutState !== 'success') return
+    let active = true
+    let attempts = 0
+    const check = async () => {
+      attempts += 1
+      try {
+        const next = await loadCurrentSubscription()
+        if (!active) return
+        onSubscriptionChange(next)
+        if (isSubscriptionActive(next)) {
+          setChecking(false)
+          window.history.replaceState({}, '', window.location.pathname)
+          return
+        }
+      } catch { /* O webhook pode ainda estar processando. */ }
+      if (active && attempts < 10) window.setTimeout(check, 1200)
+      else if (active) { setChecking(false); setMessage('O pagamento ainda está sendo confirmado. Atualize a página em alguns instantes.') }
+    }
+    void check()
+    return () => { active = false }
+  }, [checkoutState, onSubscriptionChange])
+
+  async function subscribe(planMode: PlanMode) {
+    setBusy(planMode)
+    setMessage('')
+    try { await startSubscriptionCheckout(planMode) }
+    catch (reason) { setMessage(reason instanceof Error ? reason.message : 'Não foi possível abrir o pagamento.'); setBusy('') }
+  }
+
+  async function manage() {
+    setBusy('portal')
+    setMessage('')
+    try { await openBillingPortal() }
+    catch (reason) { setMessage(reason instanceof Error ? reason.message : 'Não foi possível abrir o portal.'); setBusy('') }
+  }
+
+  const basicPrice = import.meta.env.VITE_BASIC_PLAN_PRICE_LABEL || 'Preço no checkout'
+  const guidedPrice = import.meta.env.VITE_GUIDED_PLAN_PRICE_LABEL || 'Preço no checkout'
+  return <section className="billing-page">
+    <div className="billing-intro"><span className="date-label"><CreditCard size={15} /> Assinatura VivaMeta</span><h1>Escolha como deseja planejar sua alimentação</h1><p>Pagamento recorrente por cartão processado pelo Stripe. O VivaMeta não recebe nem armazena os dados do seu cartão.</p></div>
+    {checking && <div className="billing-status checking"><LoaderCircle className="spin" size={18} /><div><strong>Confirmando seu pagamento…</strong><span>Isso normalmente leva apenas alguns segundos.</span></div></div>}
+    {checkoutState === 'cancelled' && <div className="billing-status"><Info size={18} /><div><strong>Pagamento cancelado</strong><span>Nenhuma cobrança foi concluída. Você pode tentar novamente quando quiser.</span></div></div>}
+    {subscription && !isSubscriptionActive(subscription) && <div className="billing-status warning"><AlertCircle size={18} /><div><strong>Assinatura {subscription.status === 'past_due' ? 'com pagamento pendente' : 'inativa'}</strong><span>Regularize o pagamento no portal ou inicie uma nova assinatura.</span></div>{subscription.status !== 'incomplete' && <button className="button secondary" disabled={busy === 'portal'} onClick={manage}>{busy === 'portal' ? <LoaderCircle className="spin" size={15} /> : <CreditCard size={15} />} Gerenciar</button>}</div>}
+    <div className="pricing-grid">
+      <article className="pricing-card"><span className="pricing-icon"><Calculator size={24} /></span><span className="pricing-kicker">Plano básico</span><h2>Planejador pessoal</h2><strong className="pricing-price">{basicPrice}</strong><p>Você escolhe os alimentos e organiza as refeições com estimativas automáticas.</p><ul><li><Check size={15} /> Refeições totalmente editáveis</li><li><Check size={15} /> Calorias e macros estimados</li><li><Check size={15} /> Comparação com suas metas</li></ul><button className="button secondary" disabled={Boolean(busy) || checking} onClick={() => subscribe('self')}>{busy === 'self' ? <LoaderCircle className="spin" size={16} /> : <CreditCard size={16} />} Assinar plano básico</button></article>
+      <article className="pricing-card featured"><span className="pricing-recommended">Mais completo</span><span className="pricing-icon premium"><Crown size={24} /></span><span className="pricing-kicker">Plano personalizado</span><h2>Plano guiado por IA</h2><strong className="pricing-price">{guidedPrice}</strong><p>Receba uma estrutura alimentar individualizada e personalize refeições e trocas.</p><ul><li><Sparkles size={15} /> Plano com porções e preparo</li><li><Check size={15} /> Sugestões de substituição</li><li><Check size={15} /> Ajustes salvos na sua conta</li></ul><button className="button primary" disabled={Boolean(busy) || checking} onClick={() => subscribe('guided')}>{busy === 'guided' ? <LoaderCircle className="spin" size={16} /> : <CreditCard size={16} />} Assinar plano personalizado</button></article>
+    </div>
+    {message && <div className="billing-error"><AlertCircle size={16} /> {message}</div>}
+    <div className="billing-trust"><LockKeyhole size={18} /><div><strong>Checkout seguro do Stripe</strong><span>A ativação acontece somente após a confirmação do pagamento. Cancele pelo portal do cliente.</span></div></div>
+  </section>
+}
+
+function SubscriptionBar({ subscription }: { subscription: Subscription }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const manage = async () => {
+    setBusy(true); setError('')
+    try { await openBillingPortal() }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível abrir o portal.'); setBusy(false) }
+  }
+  return <div className="subscription-bar"><span><BadgeCheck size={17} /><div><strong>{subscription.planMode === 'self' ? 'Plano básico ativo' : 'Plano personalizado ativo'}</strong><small>{subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd ? `Acesso até ${new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}` : 'Assinatura ativa'}</small></div></span><button className="button secondary" disabled={busy} onClick={manage}>{busy ? <LoaderCircle className="spin" size={14} /> : <CreditCard size={14} />} Gerenciar assinatura</button>{error && <em>{error}</em>}</div>
 }
 
 const mealIcons: Record<string, string> = { 'Café da manhã': '☀️', 'Lanche da manhã': '🍎', 'Almoço': '🥗', 'Lanche da tarde': '🥜', 'Jantar': '🍲', 'Ceia': '🌙' }
@@ -258,7 +348,17 @@ function PersonalizedPlan({ profile, nutrition, preferences, onReset }: Omit<Pro
 }
 
 export function PlanExperience(props: Props) {
-  if (!props.preferences) return <PlanOnboarding profile={props.profile} onComplete={props.onComplete} />
-  if (requiresRenalReview(props.preferences)) return <ClinicalSafetyPlan profile={props.profile} onReset={props.onReset} />
-  return <PersonalizedPlan {...props} preferences={props.preferences} />
+  if (props.billingEnabled && !isSubscriptionActive(props.subscription)) {
+    return <PricingScreen subscription={props.subscription} onSubscriptionChange={props.onSubscriptionChange} />
+  }
+
+  const entitledMode = props.billingEnabled && props.subscription ? props.subscription.planMode : null
+  const preferences = props.preferences ? { ...props.preferences, planMode: entitledMode || props.preferences.planMode || 'guided' } : null
+  let content
+  if (!preferences) content = <PlanOnboarding profile={props.profile} onComplete={props.onComplete} forcedMode={entitledMode || undefined} />
+  else if (preferences.planMode === 'self') content = <SelfPlanner profile={props.profile} nutrition={props.nutrition} preferences={preferences} onReset={props.onReset} />
+  else if (requiresRenalReview(preferences)) content = <ClinicalSafetyPlan profile={props.profile} onReset={props.onReset} />
+  else content = <PersonalizedPlan {...props} preferences={preferences} />
+
+  return <>{props.billingEnabled && props.subscription && <SubscriptionBar subscription={props.subscription} />}{content}</>
 }

@@ -7,6 +7,8 @@ export type CookingTime = 'quick' | 'moderate' | 'flexible'
 export type FoodBudget = 'economy' | 'balanced' | 'flexible'
 export type HealthCondition = 'diabetes' | 'hypertension' | 'kidney_disease' | 'liver_disease' | 'heart_disease' | 'other'
 export type AppTheme = 'nature' | 'ocean' | 'terracotta' | 'dark'
+export type PlanMode = 'self' | 'guided'
+export type SubscriptionStatus = 'incomplete' | 'incomplete_expired' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'paused'
 
 export interface Profile {
   name: string
@@ -59,6 +61,7 @@ export interface NutritionPlan {
 }
 
 export interface PlanPreferences {
+  planMode: PlanMode
   dietaryStyle: DietaryStyle
   mealsPerDay: 3 | 4 | 5 | 6
   restrictions: string[]
@@ -73,6 +76,36 @@ export interface PlanPreferences {
   healthConditions: HealthCondition[]
   healthNotes: string
   completedAt: string
+}
+
+export interface Subscription {
+  planMode: PlanMode
+  status: SubscriptionStatus
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+}
+
+export interface SelfPlanItem {
+  id: string
+  name: string
+  quantity: number
+  unit: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+export interface SelfPlanMeal {
+  id: string
+  label: string
+  time: string
+  items: SelfPlanItem[]
+}
+
+export interface SelfPlannerPlan {
+  meals: SelfPlanMeal[]
+  updatedAt: string
 }
 
 export interface PlanIngredient {

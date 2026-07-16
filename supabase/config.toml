@@ -397,6 +397,18 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/meal-swaps/deno.json"
 
+[functions.create-checkout-session]
+enabled = true
+verify_jwt = true
+
+[functions.create-portal-session]
+enabled = true
+verify_jwt = true
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

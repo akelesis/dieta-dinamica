@@ -408,7 +408,135 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 [data-theme='dark'] .generated-meal-head, [data-theme='dark'] .generated-meal-body, [data-theme='dark'] .meal-macros, [data-theme='dark'] .meal-customizer, [data-theme='dark'] .daily-guidance, [data-theme='dark'] .calorie-comparison, [data-theme='dark'] .restriction-summary, [data-theme='dark'] .professional-alert, [data-theme='dark'] .health-disclaimer { background: var(--surface-soft); border-color: var(--line); }
 [data-theme='dark'] .ingredient-list li, [data-theme='dark'] .generated-meal-head, [data-theme='dark'] .meal-macros, [data-theme='dark'] .modal-header, [data-theme='dark'] .profile-details { border-color: var(--line); }
 [data-theme='dark'] .ingredient-list li > span strong, [data-theme='dark'] .meal-preparation strong, [data-theme='dark'] .calorie-comparison-values strong, [data-theme='dark'] .calorie-comparison-heading strong, [data-theme='dark'] .customizer-heading strong, [data-theme='dark'] .swap-card > div strong { color: var(--ink); }
+
+/* Plan mode selection and self planner */
+.plan-mode-onboarding { max-width: 980px; }
+.plan-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.plan-mode-card { position: relative; min-height: 390px; display: flex; align-items: flex-start; flex-direction: column; padding: 28px; text-align: left; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 21px; box-shadow: var(--shadow); cursor: pointer; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.plan-mode-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--green) 45%, var(--line)); box-shadow: 0 22px 60px color-mix(in srgb, var(--green) 12%, transparent); }
+.plan-mode-card.featured { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
+.plan-mode-icon { width: 52px; height: 52px; display: grid; place-items: center; margin-bottom: 19px; color: var(--green); background: var(--mint); border-radius: 15px; }
+.plan-mode-icon.premium { color: #8a652d; background: #fff1cf; }
+.plan-mode-badge { position: absolute; right: 20px; top: 20px; padding: 6px 9px; color: var(--green); background: var(--mint); border-radius: 30px; font: 800 9px 'Manrope'; text-transform: uppercase; letter-spacing: .35px; }
+.plan-mode-badge.premium { color: #8a652d; background: #fff1cf; }
+.plan-mode-card h2 { margin: 0 0 8px; font: 800 21px 'Manrope'; letter-spacing: -.5px; }
+.plan-mode-card > p { min-height: 55px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.plan-mode-card ul { display: grid; gap: 10px; width: 100%; padding: 19px 0; margin: 17px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); list-style: none; }
+.plan-mode-card li { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
+.plan-mode-card li svg { color: var(--green); }
+.plan-mode-card > strong { display: flex; align-items: center; gap: 8px; margin-top: auto; color: var(--green); font: 800 11px 'Manrope'; }
+.self-planner-notice { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; margin: 12px 0; color: var(--green); background: color-mix(in srgb, var(--mint) 75%, var(--surface)); border: 1px solid color-mix(in srgb, var(--green) 16%, var(--line)); border-radius: 14px; }
+.self-planner-notice > svg { flex: 0 0 auto; margin-top: 1px; }
+.self-planner-notice > div { display: flex; flex-direction: column; }
+.self-planner-notice strong { font: 800 11px 'Manrope'; }
+.self-planner-notice span { margin-top: 3px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.self-planner-notice.compact { max-width: 670px; margin: 17px auto 0; }
+.self-planner-hero { background: linear-gradient(120deg, var(--sidebar), color-mix(in srgb, var(--sidebar) 72%, var(--green-2))); }
+.self-planner-hero p strong { color: white; }
+.self-macro-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+.self-macro-progress > div { display: grid; grid-template-columns: 1fr auto; gap: 5px; padding: 10px 12px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 11px; }
+.self-macro-progress span, .self-macro-progress b { font-size: 8px; }
+.self-macro-progress span { color: var(--muted); }
+.self-macro-progress b { color: var(--ink); }
+.self-macro-progress i { grid-column: 1 / -1; height: 5px; overflow: hidden; background: var(--surface-muted); border-radius: 10px; }
+.self-macro-progress em { display: block; height: 100%; background: var(--green); border-radius: inherit; transition: width .25s ease; }
+.self-meal-list { display: grid; gap: 12px; margin-top: 14px; }
+.self-meal-card { overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 6px 20px rgba(28,61,51,.035); }
+.self-meal-head { display: grid; grid-template-columns: minmax(180px, 1fr) auto 34px; gap: 14px; align-items: center; padding: 14px 17px; background: var(--surface-soft); border-bottom: 1px solid var(--line); }
+.self-meal-identity { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.self-meal-identity > input { min-width: 0; width: 190px; padding: 6px 8px; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 8px; font: 800 13px 'Manrope'; }
+.self-meal-identity > input:hover, .self-meal-identity > input:focus { background: var(--surface); border-color: var(--line); }
+.self-meal-identity label { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+.self-meal-identity label input { width: 83px; padding: 6px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font-size: 9px; }
+.self-meal-total { display: flex; align-items: flex-end; flex-direction: column; }
+.self-meal-total strong { color: var(--green); font: 800 14px 'Manrope'; }
+.self-meal-total span { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.self-delete-meal, .self-food-list button { width: 30px; height: 30px; display: grid; place-items: center; color: #a16a61; background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.self-delete-meal:hover, .self-food-list button:hover { background: #fff0ed; }
+.self-delete-meal:disabled { opacity: .25; cursor: not-allowed; }
+.self-meal-empty { display: flex; align-items: center; flex-direction: column; padding: 22px; color: var(--muted); background: var(--surface); }
+.self-meal-empty span { font: 700 10px 'Manrope'; }
+.self-meal-empty small { margin-top: 3px; font-size: 8px; }
+.self-food-list { padding: 0 17px; margin: 0; list-style: none; }
+.self-food-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto 30px; gap: 12px; align-items: center; min-height: 58px; border-bottom: 1px solid var(--line); }
+.self-food-list li:last-child { border-bottom: 0; }
+.self-food-list li > div { min-width: 0; display: flex; flex-direction: column; }
+.self-food-list li > div strong { overflow: hidden; color: var(--ink); font: 700 10px 'Manrope'; white-space: nowrap; text-overflow: ellipsis; }
+.self-food-list li > div span { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.self-food-list label { display: flex; align-items: center; overflow: hidden; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 9px; }
+.self-food-list label input { width: 65px; padding: 7px 6px; color: var(--ink); background: transparent; border: 0; font-size: 9px; text-align: right; }
+.self-food-list label span { padding-right: 8px; color: var(--muted); font-size: 8px; }
+.self-add-food { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 17px 15px; background: var(--surface-soft); border-top: 1px solid var(--line); }
+.self-add-food input { min-width: 0; padding: 10px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 10px; }
+.self-add-food button { display: flex; align-items: center; gap: 6px; padding: 0 14px; color: white; background: var(--green); border: 0; border-radius: 10px; font: 700 9px 'Manrope'; cursor: pointer; }
+.self-add-food button:disabled { opacity: .5; cursor: not-allowed; }
+.self-add-meal { margin-top: 12px; }
+
+@media (max-width: 700px) {
+  .plan-mode-grid { grid-template-columns: 1fr; }
+  .plan-mode-card { min-height: 350px; padding: 23px; }
+  .self-macro-progress { grid-template-columns: 1fr; }
+  .self-meal-head { grid-template-columns: 1fr 30px; }
+  .self-meal-identity { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .self-meal-identity > input { width: 100%; }
+  .self-meal-total { grid-column: 1; align-items: flex-start; }
+  .self-delete-meal { grid-column: 2; grid-row: 1; }
+  .self-food-list li { grid-template-columns: minmax(0, 1fr) 30px; padding: 9px 0; }
+  .self-food-list label { grid-column: 1; width: max-content; }
+  .self-food-list li > button { grid-column: 2; grid-row: 1 / span 2; }
+  .self-add-food { grid-template-columns: 1fr; }
+  .self-add-food button { min-height: 39px; justify-content: center; }
+}
 [data-theme='dark'] .ingredient-list li > span, [data-theme='dark'] .ingredient-list li > b, [data-theme='dark'] .meal-preparation, [data-theme='dark'] .meal-macros, [data-theme='dark'] .swap-card p, [data-theme='dark'] .customizer-heading span { color: var(--muted); }
 [data-theme='dark'] .button.danger, [data-theme='dark'] .remove-ingredient { color: #f2a69c; background: #3c2927; border-color: #60403b; }
 [data-theme='dark'] .logo, [data-theme='dark'] .button.secondary, [data-theme='dark'] .text-button { color: var(--green); }
 [data-theme='dark'] .modal-backdrop { background: rgba(1, 7, 6, .75); }
+
+/* Stripe billing */
+.billing-page { max-width: 980px; margin: 0 auto; }
+.billing-intro { max-width: 700px; margin: 4px auto 26px; text-align: center; }
+.billing-intro .date-label { justify-content: center; }
+.billing-intro h1 { margin: 12px 0 8px; color: var(--ink); font: 800 31px 'Manrope'; letter-spacing: -1px; }
+.billing-intro p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+.pricing-card { position: relative; min-height: 430px; display: flex; align-items: flex-start; flex-direction: column; padding: 29px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); }
+.pricing-card.featured { border: 2px solid color-mix(in srgb, var(--green) 60%, var(--line)); }
+.pricing-recommended { position: absolute; top: 18px; right: 18px; padding: 6px 10px; color: white; background: var(--green); border-radius: 20px; font: 800 8px 'Manrope'; text-transform: uppercase; letter-spacing: .4px; }
+.pricing-icon { width: 50px; height: 50px; display: grid; place-items: center; margin-bottom: 18px; color: var(--green); background: var(--mint); border-radius: 14px; }
+.pricing-icon.premium { color: #8a652d; background: #fff1cf; }
+.pricing-kicker { color: var(--muted); font: 800 9px 'Manrope'; text-transform: uppercase; letter-spacing: .5px; }
+.pricing-card h2 { margin: 5px 0 4px; color: var(--ink); font: 800 21px 'Manrope'; }
+.pricing-price { min-height: 24px; color: var(--green); font: 800 16px 'Manrope'; }
+.pricing-card > p { min-height: 50px; margin: 13px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.pricing-card ul { width: 100%; display: grid; gap: 11px; padding: 20px 0; margin: 18px 0; border-top: 1px solid var(--line); list-style: none; }
+.pricing-card li { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 10px; }
+.pricing-card li svg { flex: 0 0 auto; color: var(--green); }
+.pricing-card > .button { width: 100%; justify-content: center; margin-top: auto; }
+.billing-status, .billing-trust, .subscription-bar { display: flex; align-items: center; gap: 11px; padding: 13px 15px; margin: 0 0 15px; color: var(--green); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 14px; }
+.billing-status > svg, .billing-trust > svg { flex: 0 0 auto; }
+.billing-status > div, .billing-trust > div { display: flex; flex: 1; flex-direction: column; }
+.billing-status strong, .billing-trust strong { font: 800 10px 'Manrope'; }
+.billing-status span, .billing-trust span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.billing-status.warning, .billing-error { color: #9a594c; background: #fff4f0; border-color: #efd0c8; }
+.billing-status.checking { color: var(--green); background: var(--mint); }
+.billing-trust { max-width: 620px; margin: 17px auto 0; }
+.billing-error { display: flex; align-items: center; gap: 8px; padding: 11px 13px; margin-top: 13px; border: 1px solid; border-radius: 11px; font-size: 9px; }
+.subscription-bar { position: relative; justify-content: space-between; margin-bottom: 20px; }
+.subscription-bar > span { display: flex; align-items: center; gap: 9px; color: var(--green); }
+.subscription-bar > span > div { display: flex; flex-direction: column; }
+.subscription-bar strong { font: 800 10px 'Manrope'; }
+.subscription-bar small { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.subscription-bar em { position: absolute; right: 15px; bottom: -16px; color: #a15d50; font-size: 8px; font-style: normal; }
+
+@media (max-width: 700px) {
+  .billing-intro h1 { font-size: 25px; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .pricing-card { min-height: 400px; padding: 23px; }
+  .subscription-bar { align-items: flex-start; flex-direction: column; }
+  .subscription-bar .button { width: 100%; justify-content: center; }
+  .billing-status.warning { align-items: flex-start; flex-wrap: wrap; }
+  .billing-status.warning .button { width: 100%; justify-content: center; }
+}
+
+[data-theme='dark'] .pricing-card, [data-theme='dark'] .billing-status, [data-theme='dark'] .billing-trust, [data-theme='dark'] .subscription-bar { background: var(--surface); border-color: var(--line); }
+[data-theme='dark'] .billing-status.warning, [data-theme='dark'] .billing-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }

@@ -59,6 +59,13 @@ Deno.serve(async request => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, secretKey() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
   const auth = token ? await admin.auth.getUser(token) : null
   if (!auth?.data.user || auth.error) return json({ error: 'UNAUTHORIZED', message: 'Entre na sua conta para gerar trocas.' }, 401)
+  const [{ data: billing }, { data: entitlement }] = await Promise.all([
+    admin.from('billing_configuration').select('enabled').eq('singleton', true).maybeSingle(),
+    admin.from('subscriptions').select('status, plan_mode').eq('user_id', auth.data.user.id).maybeSingle(),
+  ])
+  if (billing?.enabled && (!entitlement || !['active', 'trialing'].includes(entitlement.status) || entitlement.plan_mode !== 'guided')) {
+    return json({ error: 'SUBSCRIPTION_REQUIRED', message: 'As trocas por IA requerem o plano personalizado ativo.' }, 402)
+  }
 
   const parsed = RequestInput.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return json({ error: 'INVALID_INPUT', message: 'A refeição não possui dados suficientes para gerar trocas.' }, 400)
