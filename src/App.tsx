@@ -6,11 +6,12 @@ import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
 import { deletePlanPreferences, deleteUserData, loadUserState, replaceDayLog, upsertPlanPreferences, upsertProfile } from './lib/supabase-data'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
-import type { DayLog, PlanPreferences, Profile } from './types'
+import type { AppTheme, DayLog, PlanPreferences, Profile } from './types'
 
 const PROFILE_KEY = 'vivameta:profile'
 const LOGS_KEY = 'vivameta:logs'
 const PLAN_KEY = 'vivameta:plan-preferences'
+const THEME_KEY = 'vivameta:theme'
 const today = () => new Date().toISOString().slice(0, 10)
 
 function readLocal<T>(key: string): T | null {
@@ -27,9 +28,16 @@ export default function App() {
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'error'>('idle')
   const [syncMessage, setSyncMessage] = useState('')
+  const [theme, setTheme] = useState<AppTheme>(() => readLocal<AppTheme>(THEME_KEY) || 'nature')
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
   const date = today()
   const log = logs[date] || { date, workoutDone: false, entries: [] }
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light'
+    localStorage.setItem(THEME_KEY, JSON.stringify(theme))
+  }, [theme])
 
   useEffect(() => {
     if (!supabase) return
@@ -60,6 +68,7 @@ export default function App() {
       .then(state => {
         if (!active) return
         setProfile(state.profile)
+        if (state.profile?.theme) setTheme(state.profile.theme)
         setPlanPreferences(state.planPreferences)
         setLogs({ [date]: state.log })
         setSyncStatus('idle')
@@ -87,12 +96,22 @@ export default function App() {
   }
 
   function saveProfile(next: Profile) {
-    setProfile(next)
+    const themedProfile = { ...next, theme }
+    setProfile(themedProfile)
     setEditing(false)
-    if (session) queueRemote(() => upsertProfile(session.user.id, next))
+    if (session) queueRemote(() => upsertProfile(session.user.id, themedProfile))
     else {
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(next))
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(themedProfile))
     }
+  }
+
+  function saveTheme(nextTheme: AppTheme) {
+    setTheme(nextTheme)
+    if (!profile) return
+    const nextProfile = { ...profile, theme: nextTheme }
+    setProfile(nextProfile)
+    if (session) queueRemote(() => upsertProfile(session.user.id, nextProfile))
+    else localStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile))
   }
 
   function saveLog(next: DayLog) {
@@ -139,5 +158,5 @@ export default function App() {
   if (!profile || editing) {
     return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
   }
-  return <Dashboard profile={profile} log={log} planPreferences={planPreferences} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
+  return <Dashboard profile={profile} log={log} planPreferences={planPreferences} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Activity, Apple, CalendarDays, Check, ChevronRight, CircleUserRound, Clock3, Droplets, Dumbbell, Flame, Home, Info, Leaf, Menu, MoreHorizontal, Pencil, Plus, Salad, Settings, Sparkles, Trash2, TrendingUp, UtensilsCrossed, X } from 'lucide-react'
+import { Activity, Apple, CalendarDays, Check, ChevronRight, CircleUserRound, Clock3, Droplets, Dumbbell, Flame, Home, Info, Leaf, Menu, Moon, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
 import { calculatePlan, consumedMacros, dailyActivityLabels, goalLabels, intensityLabels } from '../lib/nutrition'
-import type { DayLog, MealEntry, PlanPreferences, Profile } from '../types'
+import type { AppTheme, DayLog, MealEntry, PlanPreferences, Profile } from '../types'
 import { AddMealModal } from './AddMealModal'
 import { Logo } from './Logo'
 import { PlanExperience } from './PlanExperience'
@@ -10,6 +10,8 @@ interface Props {
   profile: Profile
   log: DayLog
   planPreferences: PlanPreferences | null
+  theme: AppTheme
+  onThemeChange: (theme: AppTheme) => void
   onLogChange: (log: DayLog) => void
   onPlanComplete: (preferences: PlanPreferences) => void
   onResetPlan: () => void
@@ -23,6 +25,13 @@ interface Props {
 type View = 'today' | 'plan' | 'profile'
 const dayLabel = () => new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).format(new Date())
 
+const themes: { id: AppTheme; title: string; description: string; icon: typeof Leaf; colors: string[] }[] = [
+  { id: 'nature', title: 'Natureza', description: 'Verde sereno e acolhedor', icon: Leaf, colors: ['#17483b', '#c7dc66', '#f7f8f4'] },
+  { id: 'ocean', title: 'Oceano', description: 'Azul fresco e equilibrado', icon: Waves, colors: ['#164e63', '#67e8f9', '#f0f8fa'] },
+  { id: 'terracotta', title: 'Terracota', description: 'Quente, suave e orgânico', icon: SunMedium, colors: ['#7c3f2e', '#e6a15c', '#fbf5ef'] },
+  { id: 'dark', title: 'Noturno', description: 'Escuro e confortável', icon: Moon, colors: ['#111c1a', '#8fcf79', '#1a2724'] },
+]
+
 function ProgressRing({ value, total }: { value: number; total: number }) {
   const ratio = Math.min(value / total, 1)
   const circumference = 2 * Math.PI * 76
@@ -34,7 +43,7 @@ function ProgressRing({ value, total }: { value: number; total: number }) {
   )
 }
 
-export function Dashboard({ profile, log, planPreferences, onLogChange, onPlanComplete, onResetPlan, onEditProfile, onReset, onSignOut, syncStatus = 'idle', syncMessage = '' }: Props) {
+export function Dashboard({ profile, log, planPreferences, theme, onThemeChange, onLogChange, onPlanComplete, onResetPlan, onEditProfile, onReset, onSignOut, syncStatus = 'idle', syncMessage = '' }: Props) {
   const [view, setView] = useState<View>('today')
   const [mealModal, setMealModal] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
@@ -117,7 +126,7 @@ export function Dashboard({ profile, log, planPreferences, onLogChange, onPlanCo
           <>
             <header className="page-header"><div><span className="date-label"><CircleUserRound size={15} /> Seus dados</span><h1>Meu perfil</h1><p>Mantenha seus dados atualizados para recalcular o plano.</p></div><button className="button primary" onClick={onEditProfile}><Pencil size={17} /> Editar perfil</button></header>
             <section className="profile-card card"><div className="profile-banner"><div className="profile-avatar">{firstName.slice(0, 1).toUpperCase()}</div><div><h2>{profile.name}</h2><span>{goalLabels[profile.goal]}</span></div></div><div className="profile-details"><div><small>Idade</small><strong>{profile.age} anos</strong></div><div><small>Altura</small><strong>{profile.height} cm</strong></div><div><small>Peso atual</small><strong>{profile.weight} kg</strong></div><div><small>Atividade cotidiana</small><strong>{dailyActivityLabels[profile.dailyActivity || 'light']}</strong></div><div><small>Frequência de treino</small><strong>{profile.workoutsPerWeek}x por semana</strong></div><div><small>Duração média</small><strong>{profile.workoutMinutes} minutos</strong></div><div><small>Intensidade do treino</small><strong>{intensityLabels[profile.intensity]}</strong></div></div></section>
-            <section className="settings-section"><h2><Settings size={20} /> Preferências</h2><div className="settings-row"><div><strong>Recomeçar configuração</strong><span>Apaga seu perfil, plano e diário alimentar.</span></div><button className="button danger" onClick={onReset}>Apagar meus dados</button></div>{onSignOut && <div className="settings-row"><div><strong>Sair da conta</strong><span>Seus dados continuarão seguros para o próximo acesso.</span></div><button className="button secondary" onClick={onSignOut}>Sair</button></div>}</section>
+            <section className="settings-section"><h2><Settings size={20} /> Preferências</h2><div className="theme-settings"><div className="theme-settings-heading"><span><Palette size={18} /></span><div><strong>Aparência do aplicativo</strong><small>Escolha o esquema de cores mais confortável para você.</small></div></div><div className="theme-grid" role="radiogroup" aria-label="Esquema de cores">{themes.map(option => { const Icon = option.icon; return <button key={option.id} type="button" role="radio" aria-checked={theme === option.id} className={`theme-option ${theme === option.id ? 'selected' : ''}`} onClick={() => onThemeChange(option.id)}><span className="theme-preview">{option.colors.map(color => <i key={color} style={{ background: color }} />)}</span><span className="theme-option-copy"><b><Icon size={15} /> {option.title}</b><small>{option.description}</small></span>{theme === option.id && <span className="theme-check"><Check size={13} /></span>}</button> })}</div></div><div className="settings-row"><div><strong>Recomeçar configuração</strong><span>Apaga seu perfil, plano e diário alimentar.</span></div><button className="button danger" onClick={onReset}>Apagar meus dados</button></div>{onSignOut && <div className="settings-row"><div><strong>Sair da conta</strong><span>Seus dados continuarão seguros para o próximo acesso.</span></div><button className="button secondary" onClick={onSignOut}>Sair</button></div>}</section>
           </>
         )}
       </main>

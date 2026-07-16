@@ -6,6 +6,7 @@ export type DietaryStyle = 'omnivore' | 'vegetarian' | 'vegan' | 'pescatarian'
 export type CookingTime = 'quick' | 'moderate' | 'flexible'
 export type FoodBudget = 'economy' | 'balanced' | 'flexible'
 export type HealthCondition = 'diabetes' | 'hypertension' | 'kidney_disease' | 'liver_disease' | 'heart_disease' | 'other'
+export type AppTheme = 'nature' | 'ocean' | 'terracotta' | 'dark'
 
 export interface Profile {
   name: string
@@ -18,6 +19,7 @@ export interface Profile {
   workoutsPerWeek: number
   workoutMinutes: number
   intensity: Intensity
+  theme: AppTheme
 }
 
 export interface FoodBreakdown {

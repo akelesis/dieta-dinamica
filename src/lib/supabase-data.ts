@@ -24,6 +24,7 @@ function profileFromRow(row: Record<string, unknown>): Profile {
     workoutsPerWeek: Number(row.workouts_per_week),
     workoutMinutes: Number(row.workout_minutes),
     intensity: row.intensity as Profile['intensity'],
+    theme: (row.theme || 'nature') as Profile['theme'],
   }
 }
 
@@ -93,6 +94,7 @@ export async function upsertProfile(userId: string, profile: Profile) {
     workouts_per_week: profile.workoutsPerWeek,
     workout_minutes: profile.workoutMinutes,
     intensity: profile.intensity,
+    theme: profile.theme,
   })
   if (error) throw error
 }

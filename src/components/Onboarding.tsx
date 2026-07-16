@@ -21,7 +21,7 @@ const dailyActivities: { id: DailyActivity; title: string; text: string; icon: t
 export function Onboarding({ onComplete, cloudStorage = false }: Props) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState<Profile>({
-    name: '', age: 30, height: 170, weight: 70, sex: 'female', goal: 'lose', dailyActivity: 'sedentary', workoutsPerWeek: 3, workoutMinutes: 50, intensity: 'moderate',
+    name: '', age: 30, height: 170, weight: 70, sex: 'female', goal: 'lose', dailyActivity: 'sedentary', workoutsPerWeek: 3, workoutMinutes: 50, intensity: 'moderate', theme: 'nature',
   })
   const set = <K extends keyof Profile>(key: K, value: Profile[K]) => setData(prev => ({ ...prev, [key]: value }))
   const canContinue = step !== 0 || data.name.trim().length >= 2
