@@ -10,7 +10,8 @@ Aplicação de acompanhamento alimentar com plano individualizado, diário de re
 - personalização de refeições com adição, exclusão e sugestões de troca;
 - triagem estruturada de comorbidades e bloqueio clínico para condições renais que exigem exames e acompanhamento profissional;
 - diário alimentar com estimativa de calorias, proteínas e carboidratos;
-- cache de alimentos para reduzir chamadas repetidas à IA;
+- catálogo de alimentos comuns baseado na TACO/Unicamp, com kcal e macronutrientes por 100 g;
+- cálculo determinístico pela quantidade e cache de alimentos antes de recorrer à IA;
 - meta diária adaptada conforme a realização do treino.
 
 ## Tecnologias

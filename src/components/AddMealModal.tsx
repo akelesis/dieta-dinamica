@@ -56,7 +56,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
           <label className="field">
             <span>Descreva sua refeição</span>
             <textarea autoFocus rows={4} placeholder="Ex.: comi 3 uvas encapadas e tomei um café sem açúcar" value={description} onChange={event => { setDescription(event.target.value); setManualCalories(''); setAiEstimate(null); setAiError('') }} />
-            <div className="meal-assist-row"><small className="field-hint"><Sparkles size={13} /> Inclua quantidades sempre que puder.</small><button type="button" className="ai-estimate-button" disabled={description.trim().length < 3 || isAnalyzing} onClick={analyzeWithAi}>{isAnalyzing ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{isAnalyzing ? 'Analisando...' : 'Estimar com IA'}</button></div>
+            <div className="meal-assist-row"><small className="field-hint"><Sparkles size={13} /> Inclua quantidades sempre que puder.</small><button type="button" className="ai-estimate-button" disabled={description.trim().length < 3 || isAnalyzing} onClick={analyzeWithAi}>{isAnalyzing ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{isAnalyzing ? 'Calculando...' : 'Calcular refeição'}</button></div>
           </label>
           <label className="field time-field"><span>Horário</span><div className="input-with-icon"><Clock3 size={18} /><input type="time" value={time} onChange={event => setTime(event.target.value)} /></div></label>
 
@@ -66,10 +66,10 @@ export function AddMealModal({ onClose, onAdd }: Props) {
           )}
           {breakdown.length > 0 && (
             <div className="estimate-card">
-              <div className="estimate-title"><span>{aiEstimate?.cached ? <Database size={16} /> : aiEstimate ? <WandSparkles size={16} /> : <Sparkles size={16} />} {aiEstimate?.cached ? 'Estimativa recuperada' : aiEstimate ? 'Estimativa com OpenAI' : 'Estimativa instantânea'}{aiEstimate?.cached && <small className="cache-badge">sem gastar tokens</small>}</span><strong>{estimated} kcal</strong></div>
+              <div className="estimate-title"><span>{aiEstimate?.cached ? <Database size={16} /> : aiEstimate ? <WandSparkles size={16} /> : <Sparkles size={16} />} {aiEstimate?.cache.strategy === 'taco' ? 'Estimativa pela TACO' : aiEstimate?.cached ? 'Estimativa recuperada' : aiEstimate ? 'Estimativa com OpenAI' : 'Estimativa instantânea'}{aiEstimate?.cached && <small className="cache-badge">sem gastar tokens</small>}</span><strong>{estimated} kcal</strong></div>
               {breakdown.map(item => <div className="estimate-row" key={item.name}><span><Check size={14} /> {item.quantity} {item.unit} · {item.name}</span><b>{item.calories} kcal</b></div>)}
               {aiEstimate?.note && <div className="ai-note"><Info size={13} /> {aiEstimate.note}</div>}
-              {aiEstimate?.cached && <div className="cache-note"><Database size={13} /> {aiEstimate.cache.strategy === 'items' ? 'Montamos esta estimativa com alimentos já salvos no banco.' : 'Esta busca já havia sido analisada. Reutilizamos o resultado salvo no banco.'}</div>}
+              {aiEstimate?.cached && <div className="cache-note"><Database size={13} /> {aiEstimate.cache.strategy === 'taco' ? 'Calculamos pela quantidade usando a tabela brasileira TACO/Unicamp.' : aiEstimate.cache.strategy === 'items' ? 'Montamos esta estimativa com alimentos já salvos no banco.' : 'Esta busca já havia sido analisada. Reutilizamos o resultado salvo no banco.'}</div>}
             </div>
           )}
           <label className="field calorie-override"><span>Calorias {estimated > 0 ? <small>(você pode corrigir)</small> : ''}</span><div className="input-with-suffix"><input type="number" min="1" placeholder={estimated ? String(estimated) : 'Ex.: 230'} value={manualCalories} onChange={event => setManualCalories(event.target.value === '' ? '' : Number(event.target.value))} /><b>kcal</b></div></label>

@@ -19,6 +19,19 @@ function secretKey() {
   try { return JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}').default as string | undefined } catch { return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') }
 }
 
+type CommonFoodRow = {
+  food_key: string
+  display_name: string
+  aliases: string[]
+  kcal_per_100g: number | string
+  protein_per_100g: number | string
+  carbs_per_100g: number | string
+  fat_per_100g: number | string
+  source_name: string
+}
+
+const roundMacro = (value: number) => Math.round(value * 10) / 10
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (request.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405)
@@ -41,22 +54,62 @@ Deno.serve(async request => {
 
   if (canonical.portions.length) {
     const keys = await Promise.all(canonical.portions.map(portion => itemKey(portion.name, portion.unit)))
-    const { data: storedItems } = await admin.from('food_item_cache').select('*').in('item_key', keys)
-    if (storedItems?.length === keys.length) {
-      const byKey = new Map(storedItems.map(item => [item.item_key, item]))
-      const items = canonical.portions.map((portion, index) => {
-        const stored = byKey.get(keys[index])!
-        const scale = portion.amount / Number(stored.base_amount)
+    const [{ data: storedItems }, { data: commonFoods }] = await Promise.all([
+      admin.from('food_item_cache').select('*').in('item_key', keys),
+      admin.from('common_foods').select('food_key,display_name,aliases,kcal_per_100g,protein_per_100g,carbs_per_100g,fat_per_100g,source_name'),
+    ])
+    const storedByKey = new Map((storedItems || []).map(item => [item.item_key, item]))
+    const commonByAlias = new Map<string, CommonFoodRow>()
+    for (const food of (commonFoods || []) as CommonFoodRow[]) for (const alias of food.aliases) commonByAlias.set(alias, food)
+
+    const matches = canonical.portions.map((portion, index) => {
+      const common = portion.unit === 'g' ? commonByAlias.get(portion.name) : undefined
+      if (common) {
+        const scale = portion.amount / 100
         return {
+          source: 'taco' as const,
+          key: common.food_key,
+          item: {
+            name: common.display_name, quantity: portion.amount, unit: portion.unit,
+            calories: Math.round(Number(common.kcal_per_100g) * scale),
+            protein: roundMacro(Number(common.protein_per_100g) * scale),
+            carbs: roundMacro(Number(common.carbs_per_100g) * scale),
+            fat: roundMacro(Number(common.fat_per_100g) * scale),
+          },
+        }
+      }
+      const stored = storedByKey.get(keys[index])
+      if (!stored) return null
+      const scale = portion.amount / Number(stored.base_amount)
+      return {
+        source: 'cache' as const,
+        key: stored.item_key,
+        item: {
           name: stored.display_name, quantity: portion.amount, unit: portion.unit,
           calories: Math.round(Number(stored.base_calories) * scale),
-          protein: Math.round(Number(stored.base_protein) * scale * 10) / 10,
-          carbs: Math.round(Number(stored.base_carbs) * scale * 10) / 10,
-          fat: Math.round(Number(stored.base_fat) * scale * 10) / 10,
-        }
+          protein: roundMacro(Number(stored.base_protein) * scale),
+          carbs: roundMacro(Number(stored.base_carbs) * scale),
+          fat: roundMacro(Number(stored.base_fat) * scale),
+        },
+      }
+    })
+
+    if (matches.every(Boolean)) {
+      const resolved = matches.filter((match): match is NonNullable<typeof match> => Boolean(match))
+      const items = resolved.map(match => match.item)
+      const cachedKeys = resolved.filter(match => match.source === 'cache').map(match => match.key)
+      if (cachedKeys.length) await admin.rpc('record_food_item_hits', { p_item_keys: cachedKeys })
+      const usesTaco = resolved.some(match => match.source === 'taco')
+      const onlyTaco = resolved.every(match => match.source === 'taco')
+      return json({
+        items,
+        totalCalories: items.reduce((sum, item) => sum + item.calories, 0),
+        confidence: onlyTaco ? 'high' : 'medium',
+        note: onlyTaco ? 'Cálculo proporcional à quantidade informada, usando valores por 100 g da TACO/Unicamp.' : 'Cálculo composto com a TACO/Unicamp e alimentos já salvos.',
+        model: usesTaco ? 'TACO 4ª edição' : 'cache',
+        cached: true,
+        cache: { hit: true, hitCount: 1, strategy: usesTaco ? 'taco' : 'items' },
       })
-      await admin.rpc('record_food_item_hits', { p_item_keys: keys })
-      return json({ items, totalCalories: items.reduce((sum, item) => sum + item.calories, 0), confidence: 'medium', note: `Estimativa composta com alimentos salvos anteriormente.`, model: 'cache', cached: true, cache: { hit: true, hitCount: 1, strategy: 'items' } })
     }
   }
 

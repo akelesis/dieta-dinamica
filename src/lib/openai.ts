@@ -11,7 +11,7 @@ export interface AiFoodEstimate {
   cache: {
     hit: boolean
     hitCount: number
-    strategy: 'portions' | 'description' | 'items'
+    strategy: 'portions' | 'description' | 'items' | 'taco'
   }
 }
 
