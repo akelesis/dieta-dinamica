@@ -98,7 +98,9 @@ Deno.serve(async request => {
       const resolved = matches.filter((match): match is NonNullable<typeof match> => Boolean(match))
       const items = resolved.map(match => match.item)
       const cachedKeys = resolved.filter(match => match.source === 'cache').map(match => match.key)
-      if (cachedKeys.length) await admin.rpc('record_food_item_hits', { p_item_keys: cachedKeys })
+      const tacoKeys = resolved.filter(match => match.source === 'taco').map(match => match.key)
+      if (tacoKeys.length) await admin.rpc('record_common_food_hits', { p_food_keys: tacoKeys })
+      else if (cachedKeys.length) await admin.rpc('record_food_item_hits', { p_item_keys: cachedKeys })
       const usesTaco = resolved.some(match => match.source === 'taco')
       const onlyTaco = resolved.every(match => match.source === 'taco')
       return json({
