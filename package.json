@@ -1,0 +1,42 @@
+{
+  "name": "vivameta",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c green,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:web": "vite --host 0.0.0.0",
+    "dev:server": "node --watch server/index.mjs",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "test": "node --test server/*.test.mjs",
+    "preview": "vite preview",
+    "start": "node server/index.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.5",
+    "@vitejs/plugin-react": "latest",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "latest",
+    "express": "latest",
+    "lucide-react": "latest",
+    "openai": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "concurrently": "latest",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "eslint-plugin-react-refresh": "latest",
+    "globals": "latest",
+    "supabase": "^2.109.1",
+    "typescript-eslint": "latest"
+  }
+}
