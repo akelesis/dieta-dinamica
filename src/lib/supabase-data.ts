@@ -40,6 +40,7 @@ function planFromRow(row: Record<string, unknown>): PlanPreferences {
     lunchTime: String(row.lunch_time).slice(0, 5),
     dinnerTime: String(row.dinner_time).slice(0, 5),
     hasHealthCondition: Boolean(row.has_health_condition),
+    healthConditions: Array.isArray(row.health_conditions) ? row.health_conditions as PlanPreferences['healthConditions'] : [],
     healthNotes: String(row.health_notes || ''),
     completedAt: String(row.completed_at),
   }
@@ -110,6 +111,7 @@ export async function upsertPlanPreferences(userId: string, plan: PlanPreference
     lunch_time: plan.lunchTime,
     dinner_time: plan.dinnerTime,
     has_health_condition: plan.hasHealthCondition,
+    health_conditions: plan.healthConditions,
     health_notes: plan.healthNotes,
     completed_at: plan.completedAt,
   })

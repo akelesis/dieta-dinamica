@@ -5,6 +5,7 @@ export type DailyActivity = 'sedentary' | 'light' | 'active' | 'heavy'
 export type DietaryStyle = 'omnivore' | 'vegetarian' | 'vegan' | 'pescatarian'
 export type CookingTime = 'quick' | 'moderate' | 'flexible'
 export type FoodBudget = 'economy' | 'balanced' | 'flexible'
+export type HealthCondition = 'diabetes' | 'hypertension' | 'kidney_disease' | 'liver_disease' | 'heart_disease' | 'other'
 
 export interface Profile {
   name: string
@@ -67,6 +68,7 @@ export interface PlanPreferences {
   lunchTime: string
   dinnerTime: string
   hasHealthCondition: boolean
+  healthConditions: HealthCondition[]
   healthNotes: string
   completedAt: string
 }

@@ -25,6 +25,7 @@ const RequestInput = z.object({
     dietaryStyle: z.enum(['omnivore', 'vegetarian', 'vegan', 'pescatarian']),
     restrictions: z.array(z.string()).max(20), favoriteFoods: z.string().max(500), dislikedFoods: z.string().max(500),
     cookingTime: z.enum(['quick', 'moderate', 'flexible']), budget: z.enum(['economy', 'balanced', 'flexible']),
+    healthConditions: z.array(z.enum(['diabetes', 'hypertension', 'kidney_disease', 'liver_disease', 'heart_disease', 'other'])).max(6).optional().default([]),
   }),
 })
 
@@ -62,6 +63,7 @@ Deno.serve(async request => {
   const parsed = RequestInput.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return json({ error: 'INVALID_INPUT', message: 'A refeição não possui dados suficientes para gerar trocas.' }, 400)
   const { meal, profile, preferences } = parsed.data
+  if (preferences.healthConditions.includes('kidney_disease')) return json({ error: 'CLINICAL_REVIEW_REQUIRED', message: 'Trocas automáticas ficam desativadas para doença renal sem revisão profissional.' }, 422)
   const apiKey = Deno.env.get('OPENAI_API_KEY')
   if (!apiKey) return json({ error: 'OPENAI_NOT_CONFIGURED' }, 503)
 

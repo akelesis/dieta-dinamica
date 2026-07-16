@@ -3,7 +3,7 @@ import { Activity, AlertCircle, ArrowLeft, ArrowRight, Check, ChefHat, Clock3, C
 import { goalLabels } from '../lib/nutrition'
 import { estimateFoodWithOpenAI } from '../lib/openai'
 import { generateNutritionPlan, saveCustomizedNutritionPlan, suggestMealSwaps } from '../lib/plan-ai'
-import type { DietaryStyle, FoodBudget, GeneratedMeal, GeneratedPlanResponse, MealSwapSuggestion, NutritionPlan, PlanIngredient, PlanPreferences, Profile } from '../types'
+import type { DietaryStyle, FoodBudget, GeneratedMeal, GeneratedPlanResponse, HealthCondition, MealSwapSuggestion, NutritionPlan, PlanIngredient, PlanPreferences, Profile } from '../types'
 
 interface Props {
   profile: Profile
@@ -21,17 +21,27 @@ const dietaryStyles: { id: DietaryStyle; icon: string; title: string; text: stri
 ]
 
 const restrictionOptions = ['Lactose', 'Glúten', 'Amendoim', 'Castanhas', 'Frutos do mar', 'Ovos', 'Soja']
+const healthConditionOptions: { id: HealthCondition; label: string }[] = [
+  { id: 'diabetes', label: 'Diabetes' },
+  { id: 'hypertension', label: 'Hipertensão' },
+  { id: 'kidney_disease', label: 'Doença ou insuficiência renal' },
+  { id: 'liver_disease', label: 'Doença hepática' },
+  { id: 'heart_disease', label: 'Cardiopatia' },
+  { id: 'other', label: 'Outra condição' },
+]
 const budgetLabels: Record<FoodBudget, string> = { economy: 'Econômico', balanced: 'Equilibrado', flexible: 'Flexível' }
 const styleLabels: Record<DietaryStyle, string> = { omnivore: 'Onívora', vegetarian: 'Vegetariana', vegan: 'Vegana', pescatarian: 'Pescetariana' }
 
 function PlanOnboarding({ profile, onComplete }: Pick<Props, 'profile' | 'onComplete'>) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState<Omit<PlanPreferences, 'completedAt'>>({
-    dietaryStyle: 'omnivore', mealsPerDay: 4, restrictions: [], favoriteFoods: '', dislikedFoods: '', cookingTime: 'moderate', budget: 'balanced', breakfastTime: '07:30', lunchTime: '12:30', dinnerTime: '19:30', hasHealthCondition: false, healthNotes: '',
+    dietaryStyle: 'omnivore', mealsPerDay: 4, restrictions: [], favoriteFoods: '', dislikedFoods: '', cookingTime: 'moderate', budget: 'balanced', breakfastTime: '07:30', lunchTime: '12:30', dinnerTime: '19:30', hasHealthCondition: false, healthConditions: [], healthNotes: '',
   })
   const set = <K extends keyof typeof data>(key: K, value: (typeof data)[K]) => setData(previous => ({ ...previous, [key]: value }))
   const toggleRestriction = (restriction: string) => set('restrictions', data.restrictions.includes(restriction) ? data.restrictions.filter(item => item !== restriction) : [...data.restrictions, restriction])
-  const finish = () => onComplete({ ...data, healthNotes: data.hasHealthCondition ? data.healthNotes.trim() : '', completedAt: new Date().toISOString() })
+  const toggleHealthCondition = (condition: HealthCondition) => set('healthConditions', data.healthConditions.includes(condition) ? data.healthConditions.filter(item => item !== condition) : [...data.healthConditions, condition])
+  const canContinue = step !== 1 || !data.hasHealthCondition || data.healthConditions.length > 0
+  const finish = () => onComplete({ ...data, healthConditions: data.hasHealthCondition ? data.healthConditions : [], healthNotes: data.hasHealthCondition ? data.healthNotes.trim() : '', completedAt: new Date().toISOString() })
 
   return (
     <section className="plan-onboarding">
@@ -45,14 +55,14 @@ function PlanOnboarding({ profile, onComplete }: Pick<Props, 'profile' | 'onComp
       <div className="plan-question-card">
         {step === 0 && <div className="plan-step"><span className="plan-step-icon"><Salad size={23} /></span><h2>Como é a sua alimentação?</h2><p>Escolha o estilo que mais representa sua rotina atual.</p><div className="diet-style-grid">{dietaryStyles.map(style => <button type="button" key={style.id} className={data.dietaryStyle === style.id ? 'selected' : ''} onClick={() => set('dietaryStyle', style.id)}><span>{style.icon}</span><div><strong>{style.title}</strong><small>{style.text}</small></div>{data.dietaryStyle === style.id && <i><Check size={13} /></i>}</button>)}</div></div>}
 
-        {step === 1 && <div className="plan-step"><span className="plan-step-icon"><ShieldCheck size={23} /></span><h2>Existe algo que devemos evitar?</h2><p>Marque alergias ou restrições. Você pode deixar tudo desmarcado.</p><div className="restriction-grid">{restrictionOptions.map(item => <button type="button" key={item} className={data.restrictions.includes(item) ? 'selected' : ''} onClick={() => toggleRestriction(item)}><span>{data.restrictions.includes(item) && <Check size={13} />}</span>{item}</button>)}</div><div className="health-question"><div><HeartPulse size={20} /><span><strong>Possui condição de saúde ou usa medicação contínua?</strong><small>Essa informação sinaliza quando é necessário acompanhamento profissional.</small></span></div><div className="binary-choice"><button className={!data.hasHealthCondition ? 'selected' : ''} onClick={() => set('hasHealthCondition', false)}>Não</button><button className={data.hasHealthCondition ? 'selected' : ''} onClick={() => set('hasHealthCondition', true)}>Sim</button></div></div>{data.hasHealthCondition && <label className="field"><span>Conte brevemente, sem incluir dados sensíveis</span><textarea rows={2} placeholder="Ex.: diabetes, hipertensão, uso de medicação..." value={data.healthNotes} onChange={event => set('healthNotes', event.target.value)} /></label>}</div>}
+        {step === 1 && <div className="plan-step"><span className="plan-step-icon"><ShieldCheck size={23} /></span><h2>Existe algo que devemos evitar?</h2><p>Marque alergias ou restrições. Você pode deixar tudo desmarcado.</p><div className="restriction-grid">{restrictionOptions.map(item => <button type="button" key={item} className={data.restrictions.includes(item) ? 'selected' : ''} onClick={() => toggleRestriction(item)}><span>{data.restrictions.includes(item) && <Check size={13} />}</span>{item}</button>)}</div><div className="health-question"><div><HeartPulse size={20} /><span><strong>Possui condição de saúde ou usa medicação contínua?</strong><small>Essa informação define se a geração automática é segura.</small></span></div><div className="binary-choice"><button type="button" className={!data.hasHealthCondition ? 'selected' : ''} onClick={() => setData(previous => ({ ...previous, hasHealthCondition: false, healthConditions: [], healthNotes: '' }))}>Não</button><button type="button" className={data.hasHealthCondition ? 'selected' : ''} onClick={() => set('hasHealthCondition', true)}>Sim</button></div></div>{data.hasHealthCondition && <div className="health-condition-fields"><div><span className="field-label">Selecione a condição informada</span><div className="health-condition-grid">{healthConditionOptions.map(condition => <button type="button" key={condition.id} className={data.healthConditions.includes(condition.id) ? 'selected' : ''} onClick={() => toggleHealthCondition(condition.id)}><span>{data.healthConditions.includes(condition.id) && <Check size={12} />}</span>{condition.label}</button>)}</div></div>{data.healthConditions.includes('kidney_disease') && <div className="renal-safety-note"><AlertCircle size={17} /><div><strong>Esta condição exige plano clínico individualizado</strong><span>Não geraremos uma dieta renal automática sem estágio da doença, exames de potássio e orientação sobre diálise, proteína e líquidos.</span></div></div>}<label className="field"><span>Observação opcional para seu cadastro</span><textarea rows={2} placeholder="Não inclua exames, documentos ou outros dados sensíveis." value={data.healthNotes} onChange={event => set('healthNotes', event.target.value)} /></label></div>}</div>}
 
         {step === 2 && <div className="plan-step"><span className="plan-step-icon"><ChefHat size={23} /></span><h2>Qual plano cabe na sua rotina?</h2><p>A melhor estratégia é aquela que você consegue repetir.</p><div className="plan-form-row"><div className="plan-control"><span><UtensilsCrossed size={16} /> Refeições por dia</span><div className="number-choice">{([3, 4, 5, 6] as const).map(number => <button key={number} className={data.mealsPerDay === number ? 'selected' : ''} onClick={() => set('mealsPerDay', number)}>{number}</button>)}</div></div><div className="plan-control"><span><Clock3 size={16} /> Tempo para cozinhar</span><div className="stack-choice"><button className={data.cookingTime === 'quick' ? 'selected' : ''} onClick={() => set('cookingTime', 'quick')}><b>Até 15 min</b><small>Praticidade acima de tudo</small></button><button className={data.cookingTime === 'moderate' ? 'selected' : ''} onClick={() => set('cookingTime', 'moderate')}><b>Até 30 min</b><small>Um pouco de preparo</small></button><button className={data.cookingTime === 'flexible' ? 'selected' : ''} onClick={() => set('cookingTime', 'flexible')}><b>Sem limite</b><small>Gosto de cozinhar</small></button></div></div></div><div className="budget-control"><span><Coins size={16} /> Orçamento para alimentação</span><div>{(['economy', 'balanced', 'flexible'] as const).map(item => <button key={item} className={data.budget === item ? 'selected' : ''} onClick={() => set('budget', item)}><WalletCards size={16} />{budgetLabels[item]}</button>)}</div></div></div>}
 
         {step === 3 && <div className="plan-step"><span className="plan-step-icon"><Clock3 size={23} /></span><h2>Últimos detalhes da sua rotina</h2><p>Use horários aproximados. O plano continua flexível.</p><div className="time-grid"><label className="field"><span>Café da manhã</span><input type="time" value={data.breakfastTime} onChange={event => set('breakfastTime', event.target.value)} /></label><label className="field"><span>Almoço</span><input type="time" value={data.lunchTime} onChange={event => set('lunchTime', event.target.value)} /></label><label className="field"><span>Jantar</span><input type="time" value={data.dinnerTime} onChange={event => set('dinnerTime', event.target.value)} /></label></div><div className="preference-grid"><label className="field"><span>Alimentos que você gosta</span><textarea rows={3} placeholder="Ex.: arroz, feijão, banana, frango..." value={data.favoriteFoods} onChange={event => set('favoriteFoods', event.target.value)} /></label><label className="field"><span>Alimentos que prefere evitar</span><textarea rows={3} placeholder="Ex.: brócolis, peixe, abacate..." value={data.dislikedFoods} onChange={event => set('dislikedFoods', event.target.value)} /></label></div><div className="plan-ready-note"><Sparkles size={18} /><div><strong>Tudo pronto para personalizar</strong><span>Vamos combinar seu objetivo, gasto energético, rotina e preferências.</span></div></div></div>}
       </div>
 
-      <div className="plan-onboarding-actions"><button className="button ghost" disabled={step === 0} onClick={() => setStep(value => value - 1)}><ArrowLeft size={17} /> Voltar</button>{step < 3 ? <button className="button primary" onClick={() => setStep(value => value + 1)}>Continuar <ArrowRight size={17} /></button> : <button className="button primary" onClick={finish}>Construir meu plano <Sparkles size={17} /></button>}</div>
+      <div className="plan-onboarding-actions"><button className="button ghost" disabled={step === 0} onClick={() => setStep(value => value - 1)}><ArrowLeft size={17} /> Voltar</button>{step < 3 ? <button className="button primary" disabled={!canContinue} onClick={() => setStep(value => value + 1)}>Continuar <ArrowRight size={17} /></button> : <button className="button primary" onClick={finish}>Construir meu plano <Sparkles size={17} /></button>}</div>
     </section>
   )
 }
@@ -156,6 +166,24 @@ function DetailedMeal({ meal, profile, preferences, onChange }: { meal: Generate
   </article>
 }
 
+function requiresRenalReview(preferences: PlanPreferences) {
+  if ((preferences.healthConditions || []).includes('kidney_disease')) return true
+  const notes = (preferences.healthNotes || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return /\b(renal|rim|rins|nefro|hemodialise|dialise)\b/.test(notes)
+}
+
+function ClinicalSafetyPlan({ profile, onReset }: Pick<Props, 'profile' | 'onReset'>) {
+  return <>
+    <header className="page-header plan-page-header"><div><span className="date-label"><ShieldCheck size={15} /> Segurança clínica</span><h1>Plano nutricional especializado</h1><p>{profile.name.split(' ')[0]}, sua condição exige parâmetros clínicos que um gerador alimentar genérico não consegue validar.</p></div><button className="button secondary" onClick={onReset}><Pencil size={16} /> Revisar respostas</button></header>
+    <section className="clinical-safety-card card">
+      <span className="clinical-safety-icon"><HeartPulse size={28} /></span>
+      <div><span className="card-kicker">Geração automática pausada</span><h2>Não vamos criar uma dieta renal sem dados clínicos.</h2><p>Na doença renal crônica, restringir potássio, proteína, fósforo, sódio ou líquidos depende do estágio, dos exames e do tipo de tratamento. Uma recomendação genérica pode ser inadequada nos dois sentidos.</p></div>
+    </section>
+    <section className="clinical-requirements card"><div><Info size={18} /><div><strong>O plano deve ser definido com nutricionista e nefrologista considerando:</strong><ul><li>estágio da doença e taxa de filtração glomerular;</li><li>potássio sérico e orientação individual sobre alimentos ricos em potássio;</li><li>tratamento conservador, hemodiálise ou diálise peritoneal;</li><li>metas de proteína, sódio, fósforo e líquidos.</li></ul></div></div><button className="button primary" onClick={onReset}>Atualizar informações do plano</button></section>
+    <div className="health-disclaimer"><AlertCircle size={19} /><p><strong>Por segurança, nenhum plano anterior será exibido nem alterado pela IA enquanto a condição renal estiver selecionada.</strong> O diário alimentar continua disponível como registro, sem substituir orientação clínica.</p></div>
+  </>
+}
+
 function PersonalizedPlan({ profile, nutrition, preferences, onReset }: Omit<Props, 'preferences' | 'onComplete'> & { preferences: PlanPreferences }) {
   const [response, setResponse] = useState<GeneratedPlanResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -230,5 +258,7 @@ function PersonalizedPlan({ profile, nutrition, preferences, onReset }: Omit<Pro
 }
 
 export function PlanExperience(props: Props) {
-  return props.preferences ? <PersonalizedPlan {...props} preferences={props.preferences} /> : <PlanOnboarding profile={props.profile} onComplete={props.onComplete} />
+  if (!props.preferences) return <PlanOnboarding profile={props.profile} onComplete={props.onComplete} />
+  if (requiresRenalReview(props.preferences)) return <ClinicalSafetyPlan profile={props.profile} onReset={props.onReset} />
+  return <PersonalizedPlan {...props} preferences={props.preferences} />
 }

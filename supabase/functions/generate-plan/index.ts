@@ -3,7 +3,7 @@ import { zodTextFormat } from 'npm:openai@6.47.0/helpers/zod'
 import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
 
-const PROMPT_VERSION = 5
+const PROMPT_VERSION = 6
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -38,6 +38,7 @@ const PreferencesInput = z.object({
   lunchTime: z.string().regex(/^\d{2}:\d{2}$/),
   dinnerTime: z.string().regex(/^\d{2}:\d{2}$/),
   hasHealthCondition: z.boolean(),
+  healthConditions: z.array(z.enum(['diabetes', 'hypertension', 'kidney_disease', 'liver_disease', 'heart_disease', 'other'])).max(6).optional().default([]),
 })
 
 const RequestInput = z.object({
@@ -190,6 +191,12 @@ Deno.serve(async request => {
   }
 
   const { profile, preferences, force } = parsed.data
+  if (preferences.healthConditions.includes('kidney_disease')) {
+    return json({
+      error: 'CLINICAL_REVIEW_REQUIRED',
+      message: 'Doença renal exige plano individualizado com estágio, exames e tipo de tratamento. A geração automática foi pausada por segurança.',
+    }, 422)
+  }
   const nutrition = nutritionFor(profile)
   const mealSchedule = schedule(preferences)
   const inputHash = await hashInput({ profile, preferences, nutrition, promptVersion: PROMPT_VERSION })
@@ -221,6 +228,7 @@ Deno.serve(async request => {
     tempoParaCozinhar: preferences.cookingTime,
     orcamento: preferences.budget,
     possuiCondicaoDeSaude: preferences.hasHealthCondition,
+    condicoesSaudeEstruturadas: preferences.healthConditions,
     refeicoesObrigatorias: mealSchedule,
   }
 
@@ -234,6 +242,7 @@ REGRAS OBRIGATÓRIAS:
 - Nunca coloque ovos e aveia na mesma refeição, nem como acompanhamentos. Se escolher ovos no café, combine com pão, tapioca, queijo ou fruta. Se escolher aveia, combine com leite, iogurte, bebida vegetal e fruta.
 - Almoço e jantar devem ser preparações diferentes. Não repita no jantar a mesma combinação de carboidrato, leguminosa e proteína usada no almoço.
 - Respeite integralmente estilo alimentar, restrições e alimentos evitados. Use preferidos quando forem compatíveis.
+- Considere as condições de saúde estruturadas apenas como sinal de cautela educativa; não prescreva tratamento clínico nem invente restrições laboratoriais.
 - Priorize alimentos comuns no Brasil e respeite o orçamento e o tempo de preparo.
 - A soma real das calorias dos ingredientes deve ficar entre 95% e 100% da meta sem treino. Pode ficar até 5% abaixo, mas nunca acima da meta. Aproxime proteína, carboidratos e gorduras dos alvos.
 - Calorias dos ingredientes devem somar aproximadamente as calorias da refeição. Os totais diários devem refletir a soma das refeições.
