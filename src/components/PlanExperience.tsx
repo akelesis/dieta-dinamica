@@ -130,8 +130,8 @@ function PricingScreen({ subscription, onSubscriptionChange }: Pick<Props, 'subs
     catch (reason) { setMessage(reason instanceof Error ? reason.message : 'Não foi possível abrir o portal.'); setBusy('') }
   }
 
-  const basicPrice = import.meta.env.VITE_BASIC_PLAN_PRICE_LABEL || 'Preço no checkout'
-  const guidedPrice = import.meta.env.VITE_GUIDED_PLAN_PRICE_LABEL || 'Preço no checkout'
+  const basicPrice = import.meta.env.VITE_BASIC_PLAN_PRICE_LABEL || 'R$ 18,90/mês'
+  const guidedPrice = import.meta.env.VITE_GUIDED_PLAN_PRICE_LABEL || 'R$ 27,90/mês'
   return <section className="billing-page">
     <div className="billing-intro"><span className="date-label"><CreditCard size={15} /> Assinatura VivaMeta</span><h1>Escolha como deseja planejar sua alimentação</h1><p>Pagamento recorrente por cartão processado pelo Stripe. O VivaMeta não recebe nem armazena os dados do seu cartão.</p></div>
     {checking && <div className="billing-status checking"><LoaderCircle className="spin" size={18} /><div><strong>Confirmando seu pagamento…</strong><span>Isso normalmente leva apenas alguns segundos.</span></div></div>}
