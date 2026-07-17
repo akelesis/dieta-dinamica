@@ -8,7 +8,7 @@ import { PricingScreen } from './components/PlanExperience'
 import { isSubscriptionActive } from './lib/billing'
 import { deletePlanPreferences, deleteUserData, loadUserState, replaceDayLog, upsertPlanPreferences, upsertProfile } from './lib/supabase-data'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
-import type { AppTheme, DayLog, PlanPreferences, Profile, Subscription } from './types'
+import type { AppTheme, DayLog, PlanMode, PlanPreferences, Profile, Subscription } from './types'
 
 const PROFILE_KEY = 'vivameta:profile'
 const LOGS_KEY = 'vivameta:logs'
@@ -26,6 +26,7 @@ export default function App() {
   const [logs, setLogs] = useState<Record<string, DayLog>>(() => isSupabaseConfigured ? {} : readLocal<Record<string, DayLog>>(LOGS_KEY) || {})
   const [planPreferences, setPlanPreferences] = useState<PlanPreferences | null>(() => isSupabaseConfigured ? null : readLocal<PlanPreferences>(PLAN_KEY))
   const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [betaPlan, setBetaPlan] = useState<PlanMode | null>(null)
   const [billingEnabled, setBillingEnabled] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured)
@@ -59,6 +60,7 @@ export default function App() {
         setProfile(null)
         setPlanPreferences(null)
         setSubscription(null)
+        setBetaPlan(null)
         setBillingEnabled(false)
         setLogs({})
         setLoadedUserId(null)
@@ -77,6 +79,7 @@ export default function App() {
         if (state.profile?.theme) setTheme(state.profile.theme)
         setPlanPreferences(state.planPreferences)
         setSubscription(state.subscription)
+        setBetaPlan(state.betaPlan)
         setBillingEnabled(state.billingEnabled)
         setLogs({ [date]: state.log })
         setSyncStatus('idle')
@@ -170,7 +173,7 @@ export default function App() {
   if (!profile) {
     return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
   }
-  if (billingEnabled && !isSubscriptionActive(subscription)) {
+  if (billingEnabled && !isSubscriptionActive(subscription) && !betaPlan) {
     return <div className="subscription-gate-shell">
       <header className="subscription-gate-header"><Logo /><div><span>{session?.user.email}</span>{session && <button className="button secondary" onClick={signOut}>Sair</button>}</div></header>
       <main className="subscription-gate-main"><PricingScreen subscription={subscription} onSubscriptionChange={setSubscription} /></main>
@@ -180,5 +183,5 @@ export default function App() {
   if (editing) {
     return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
   }
-  return <Dashboard profile={profile} log={log} planPreferences={planPreferences} subscription={subscription} onSubscriptionChange={setSubscription} billingEnabled={billingEnabled} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
+  return <Dashboard profile={profile} log={log} planPreferences={planPreferences} subscription={subscription} betaPlan={betaPlan} onSubscriptionChange={setSubscription} billingEnabled={billingEnabled} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
 }

@@ -2,6 +2,7 @@ import OpenAI from 'npm:openai@6.47.0'
 import { zodTextFormat } from 'npm:openai@6.47.0/helpers/zod'
 import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
+import { accessForUser } from '../_shared/access.ts'
 import { CACHE_SCHEMA_VERSION, canonicalFoodKey, itemKey } from '../_shared/food-normalizer.ts'
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' }
@@ -41,11 +42,8 @@ Deno.serve(async request => {
   const admin = createClient(supabaseUrl, secretKey() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
   const auth = token ? await admin.auth.getUser(token) : null
   if (!auth?.data.user || auth.error) return json({ error: 'UNAUTHORIZED', message: 'Entre na sua conta para analisar alimentos.' }, 401)
-  const [{ data: billing }, { data: entitlement }] = await Promise.all([
-    admin.from('billing_configuration').select('enabled').eq('singleton', true).maybeSingle(),
-    admin.from('subscriptions').select('status').eq('user_id', auth.data.user.id).maybeSingle(),
-  ])
-  if (billing?.enabled && (!entitlement || !['active', 'trialing'].includes(entitlement.status))) {
+  const access = await accessForUser(admin, auth.data.user)
+  if (access.billingEnabled && !access.planMode) {
     return json({ error: 'SUBSCRIPTION_REQUIRED', message: 'A estimativa automática de alimentos requer uma assinatura ativa.' }, 402)
   }
 

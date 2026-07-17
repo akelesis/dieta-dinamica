@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Activity, AlertCircle, Apple, BadgeCheck, CalendarDays, Check, ChevronRight, CircleUserRound, Clock3, CreditCard, Crown, Droplets, Dumbbell, Flame, Home, Info, Leaf, LoaderCircle, Menu, Moon, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
 import { isSubscriptionActive, openBillingPortal } from '../lib/billing'
 import { calculatePlan, consumedMacros, dailyActivityLabels, goalLabels, intensityLabels } from '../lib/nutrition'
-import type { AppTheme, DayLog, MealEntry, PlanPreferences, Profile, Subscription } from '../types'
+import type { AppTheme, DayLog, MealEntry, PlanMode, PlanPreferences, Profile, Subscription } from '../types'
 import { AddMealModal } from './AddMealModal'
 import { Logo } from './Logo'
 import { PlanExperience } from './PlanExperience'
@@ -12,6 +12,7 @@ interface Props {
   log: DayLog
   planPreferences: PlanPreferences | null
   subscription: Subscription | null
+  betaPlan: PlanMode | null
   onSubscriptionChange: (subscription: Subscription | null) => void
   billingEnabled: boolean
   theme: AppTheme
@@ -53,13 +54,16 @@ function subscriptionDate(value: string | null) {
   return Number.isNaN(date.getTime()) ? 'Não disponível' : date.toLocaleDateString('pt-BR')
 }
 
-function ProfileSubscriptionCard({ subscription, onViewPlans }: { subscription: Subscription | null; onViewPlans: () => void }) {
+function ProfileSubscriptionCard({ subscription, betaPlan, onViewPlans }: { subscription: Subscription | null; betaPlan: PlanMode | null; onViewPlans: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const active = isSubscriptionActive(subscription)
-  const canManage = Boolean(subscription && !['incomplete', 'incomplete_expired'].includes(subscription.status))
-  const planName = subscription?.planMode === 'guided' ? 'Plano Plus' : subscription ? 'Plano básico' : 'Nenhum plano contratado'
-  const price = subscription?.planMode === 'guided'
+  const betaActive = Boolean(betaPlan && !active)
+  const accessActive = active || betaActive
+  const accessPlan = active ? subscription?.planMode || null : betaPlan
+  const canManage = Boolean(!betaActive && subscription && !['incomplete', 'incomplete_expired'].includes(subscription.status))
+  const planName = betaActive ? `Acesso beta · ${accessPlan === 'guided' ? 'Plano Plus' : 'Plano básico'}` : subscription?.planMode === 'guided' ? 'Plano Plus' : subscription ? 'Plano básico' : 'Nenhum plano contratado'
+  const price = accessPlan === 'guided'
     ? import.meta.env.VITE_GUIDED_PLAN_PRICE_LABEL || 'R$ 27,90/mês'
     : import.meta.env.VITE_BASIC_PLAN_PRICE_LABEL || 'R$ 18,90/mês'
   const dateLabel = subscription?.cancelAtPeriodEnd
@@ -69,7 +73,7 @@ function ProfileSubscriptionCard({ subscription, onViewPlans }: { subscription: 
       : active
         ? 'Próxima renovação'
         : 'Período atual até'
-  const stateClass = active ? 'active' : subscription?.status === 'past_due' || subscription?.status === 'unpaid' || subscription?.status === 'incomplete' ? 'warning' : 'inactive'
+  const stateClass = accessActive ? 'active' : subscription?.status === 'past_due' || subscription?.status === 'unpaid' || subscription?.status === 'incomplete' ? 'warning' : 'inactive'
 
   const manage = async () => {
     setBusy(true)
@@ -83,14 +87,14 @@ function ProfileSubscriptionCard({ subscription, onViewPlans }: { subscription: 
 
   return <section className={`profile-subscription-card card ${stateClass}`}>
     <div className="profile-subscription-heading">
-      <span className="profile-subscription-icon">{subscription?.planMode === 'guided' ? <Crown size={23} /> : <CreditCard size={23} />}</span>
-      <div><small>Assinatura VivaMeta</small><h2>{planName}</h2><p>{subscription ? subscription.planMode === 'guided' ? 'Plano alimentar personalizado e recursos guiados por IA.' : 'Planejador pessoal com estimativas de calorias e macronutrientes.' : 'Escolha um plano para acessar as ferramentas de planejamento alimentar.'}</p></div>
-      <span className={`profile-subscription-status ${stateClass}`}>{active ? <BadgeCheck size={14} /> : <AlertCircle size={14} />}{subscription ? subscriptionStatusLabels[subscription.status] : 'Sem assinatura'}</span>
+      <span className="profile-subscription-icon">{accessPlan === 'guided' ? <Crown size={23} /> : <CreditCard size={23} />}</span>
+      <div><small>Acesso VivaMeta</small><h2>{planName}</h2><p>{betaActive ? 'Conta liberada sem cobrança durante o programa beta.' : subscription ? subscription.planMode === 'guided' ? 'Plano alimentar personalizado e recursos guiados por IA.' : 'Planejador pessoal com estimativas de calorias e macronutrientes.' : 'Escolha um plano para acessar as ferramentas de planejamento alimentar.'}</p></div>
+      <span className={`profile-subscription-status ${stateClass}`}>{accessActive ? <BadgeCheck size={14} /> : <AlertCircle size={14} />}{betaActive ? 'Beta ativo' : subscription ? subscriptionStatusLabels[subscription.status] : 'Sem assinatura'}</span>
     </div>
-    {subscription && <div className="profile-subscription-details"><div><small>Valor do plano</small><strong>{price}</strong></div><div><small>Status</small><strong>{subscriptionStatusLabels[subscription.status]}</strong></div><div><small>{dateLabel}</small><strong>{subscriptionDate(subscription.currentPeriodEnd)}</strong></div></div>}
+    {betaActive ? <div className="profile-subscription-details"><div><small>Valor durante o beta</small><strong>Sem cobrança</strong></div><div><small>Status</small><strong>Beta ativo</strong></div><div><small>Modalidade liberada</small><strong>{accessPlan === 'guided' ? 'Plano Plus' : 'Plano básico'}</strong></div></div> : subscription && <div className="profile-subscription-details"><div><small>Valor do plano</small><strong>{price}</strong></div><div><small>Status</small><strong>{subscriptionStatusLabels[subscription.status]}</strong></div><div><small>{dateLabel}</small><strong>{subscriptionDate(subscription.currentPeriodEnd)}</strong></div></div>}
     <div className="profile-subscription-actions">
-      <span>{subscription?.cancelAtPeriodEnd ? 'O cancelamento está agendado; seu acesso continua até a data indicada.' : active ? 'Cobrança recorrente processada com segurança pelo Stripe.' : subscription ? 'Revise o pagamento ou escolha novamente seu plano.' : 'Você poderá cancelar a assinatura pelo Portal do Stripe.'}</span>
-      {canManage ? <button className="button secondary" disabled={busy} onClick={manage}>{busy ? <LoaderCircle className="spin" size={15} /> : <CreditCard size={15} />} Gerenciar assinatura</button> : <button className="button primary" onClick={onViewPlans}><Sparkles size={15} /> Ver planos</button>}
+      <span>{betaActive ? 'Este acesso pode ser alterado ou encerrado pela equipe responsável pelo programa beta.' : subscription?.cancelAtPeriodEnd ? 'O cancelamento está agendado; seu acesso continua até a data indicada.' : active ? 'Cobrança recorrente processada com segurança pelo Stripe.' : subscription ? 'Revise o pagamento ou escolha novamente seu plano.' : 'Você poderá cancelar a assinatura pelo Portal do Stripe.'}</span>
+      {!betaActive && (canManage ? <button className="button secondary" disabled={busy} onClick={manage}>{busy ? <LoaderCircle className="spin" size={15} /> : <CreditCard size={15} />} Gerenciar assinatura</button> : <button className="button primary" onClick={onViewPlans}><Sparkles size={15} /> Ver planos</button>)}
     </div>
     {error && <div className="profile-subscription-error" role="status"><AlertCircle size={15} /> {error}</div>}
   </section>
@@ -107,7 +111,7 @@ function ProgressRing({ value, total }: { value: number; total: number }) {
   )
 }
 
-export function Dashboard({ profile, log, planPreferences, subscription, onSubscriptionChange, billingEnabled, theme, onThemeChange, onLogChange, onPlanComplete, onResetPlan, onEditProfile, onReset, onSignOut, syncStatus = 'idle', syncMessage = '' }: Props) {
+export function Dashboard({ profile, log, planPreferences, subscription, betaPlan, onSubscriptionChange, billingEnabled, theme, onThemeChange, onLogChange, onPlanComplete, onResetPlan, onEditProfile, onReset, onSignOut, syncStatus = 'idle', syncMessage = '' }: Props) {
   const [view, setView] = useState<View>('today')
   const [mealModal, setMealModal] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
@@ -183,14 +187,14 @@ export function Dashboard({ profile, log, planPreferences, subscription, onSubsc
         )}
 
         {view === 'plan' && (
-          <PlanExperience profile={profile} nutrition={plan} preferences={planPreferences} subscription={subscription} billingEnabled={billingEnabled} onSubscriptionChange={onSubscriptionChange} onComplete={onPlanComplete} onReset={onResetPlan} />
+          <PlanExperience profile={profile} nutrition={plan} preferences={planPreferences} subscription={subscription} betaPlan={betaPlan} billingEnabled={billingEnabled} onSubscriptionChange={onSubscriptionChange} onComplete={onPlanComplete} onReset={onResetPlan} />
         )}
 
         {view === 'profile' && (
           <>
             <header className="page-header"><div><span className="date-label"><CircleUserRound size={15} /> Seus dados</span><h1>Meu perfil</h1><p>Mantenha seus dados atualizados para recalcular o plano.</p></div><button className="button primary" onClick={onEditProfile}><Pencil size={17} /> Editar perfil</button></header>
             <section className="profile-card card"><div className="profile-banner"><div className="profile-avatar">{firstName.slice(0, 1).toUpperCase()}</div><div><h2>{profile.name}</h2><span>{goalLabels[profile.goal]}</span></div></div><div className="profile-details"><div><small>Idade</small><strong>{profile.age} anos</strong></div><div><small>Altura</small><strong>{profile.height} cm</strong></div><div><small>Peso atual</small><strong>{profile.weight} kg</strong></div><div><small>Atividade cotidiana</small><strong>{dailyActivityLabels[profile.dailyActivity || 'light']}</strong></div><div><small>Frequência de treino</small><strong>{profile.workoutsPerWeek}x por semana</strong></div><div><small>Duração média</small><strong>{profile.workoutMinutes} minutos</strong></div><div><small>Intensidade do treino</small><strong>{intensityLabels[profile.intensity]}</strong></div></div></section>
-            {billingEnabled && <ProfileSubscriptionCard subscription={subscription} onViewPlans={() => nav('plan')} />}
+            {billingEnabled && <ProfileSubscriptionCard subscription={subscription} betaPlan={betaPlan} onViewPlans={() => nav('plan')} />}
             <section className="settings-section"><h2><Settings size={20} /> Preferências</h2><div className="theme-settings"><div className="theme-settings-heading"><span><Palette size={18} /></span><div><strong>Aparência do aplicativo</strong><small>Escolha o esquema de cores mais confortável para você.</small></div></div><div className="theme-grid" role="radiogroup" aria-label="Esquema de cores">{themes.map(option => { const Icon = option.icon; return <button key={option.id} type="button" role="radio" aria-checked={theme === option.id} className={`theme-option ${theme === option.id ? 'selected' : ''}`} onClick={() => onThemeChange(option.id)}><span className="theme-preview">{option.colors.map(color => <i key={color} style={{ background: color }} />)}</span><span className="theme-option-copy"><b><Icon size={15} /> {option.title}</b><small>{option.description}</small></span>{theme === option.id && <span className="theme-check"><Check size={13} /></span>}</button> })}</div></div><div className="settings-row"><div><strong>Recomeçar configuração</strong><span>Apaga seu perfil, plano e diário alimentar.</span></div><button className="button danger" onClick={onReset}>Apagar meus dados</button></div>{onSignOut && <div className="settings-row"><div><strong>Sair da conta</strong><span>Seus dados continuarão seguros para o próximo acesso.</span></div><button className="button secondary" onClick={onSignOut}>Sair</button></div>}</section>
           </>
         )}

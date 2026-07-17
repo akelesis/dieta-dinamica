@@ -2,6 +2,7 @@ import OpenAI from 'npm:openai@6.47.0'
 import { zodTextFormat } from 'npm:openai@6.47.0/helpers/zod'
 import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
+import { accessForUser } from '../_shared/access.ts'
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
@@ -59,11 +60,8 @@ Deno.serve(async request => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, secretKey() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
   const auth = token ? await admin.auth.getUser(token) : null
   if (!auth?.data.user || auth.error) return json({ error: 'UNAUTHORIZED', message: 'Entre na sua conta para gerar trocas.' }, 401)
-  const [{ data: billing }, { data: entitlement }] = await Promise.all([
-    admin.from('billing_configuration').select('enabled').eq('singleton', true).maybeSingle(),
-    admin.from('subscriptions').select('status, plan_mode').eq('user_id', auth.data.user.id).maybeSingle(),
-  ])
-  if (billing?.enabled && (!entitlement || !['active', 'trialing'].includes(entitlement.status) || entitlement.plan_mode !== 'guided')) {
+  const access = await accessForUser(admin, auth.data.user)
+  if (access.billingEnabled && access.planMode !== 'guided') {
     return json({ error: 'SUBSCRIPTION_REQUIRED', message: 'As trocas por IA requerem o plano personalizado ativo.' }, 402)
   }
 

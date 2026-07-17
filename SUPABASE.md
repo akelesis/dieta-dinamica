@@ -38,6 +38,34 @@ Reinicie `npm run dev` depois de alterar o `.env`.
 
 A chave da OpenAI fica somente nos secrets da Edge Function. A publishable key do Supabase pode ser usada no navegador porque as tabelas do usuário estão protegidas por RLS. As tabelas de cache não têm políticas para usuários e só podem ser acessadas pela função com a chave secreta do projeto.
 
+## Acesso beta sem cobrança
+
+Os e-mails autorizados ficam na tabela privada `beta_access_emails`. Ela não pode ser lida pelo frontend; apenas a `service_role` e o SQL Editor podem gerenciá-la. O plano `guided` libera o Plano Plus e `self` libera o Plano Básico.
+
+Adicionar ou atualizar participantes pelo SQL Editor:
+
+```sql
+insert into public.beta_access_emails (email, plan_mode, expires_at, note)
+values
+  ('beta1@exemplo.com', 'guided', null, 'Turma beta inicial'),
+  ('beta2@exemplo.com', 'self', '2026-12-31 23:59:59+00', 'Acesso temporário')
+on conflict (email) do update set
+  plan_mode = excluded.plan_mode,
+  expires_at = excluded.expires_at,
+  active = true,
+  note = excluded.note;
+```
+
+Desativar um acesso sem apagar o histórico:
+
+```sql
+update public.beta_access_emails
+set active = false
+where email = 'beta1@exemplo.com';
+```
+
+O bypass é validado no banco, no frontend e nas Edge Functions. E-mails inativos ou com `expires_at` vencido voltam automaticamente para a tela de seleção de planos.
+
 ## Migração gradual
 
 Sem as variáveis `VITE_SUPABASE_*`, o frontend mantém o comportamento anterior: dados no `localStorage` e análise de alimentos pela API Express local. Isso permite validar o Supabase antes de retirar `server/`, SQLite e o proxy do Vite.

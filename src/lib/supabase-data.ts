@@ -1,10 +1,11 @@
-import type { DayLog, MealEntry, PlanPreferences, Profile, Subscription } from '../types'
+import type { DayLog, MealEntry, PlanMode, PlanPreferences, Profile, Subscription } from '../types'
 import { supabase } from './supabase'
 
 export interface UserState {
   profile: Profile | null
   planPreferences: PlanPreferences | null
   subscription: Subscription | null
+  betaPlan: PlanMode | null
   billingEnabled: boolean
   log: DayLog
 }
@@ -63,15 +64,16 @@ function mealFromRow(row: Record<string, unknown>): MealEntry {
 
 export async function loadUserState(userId: string, date: string): Promise<UserState> {
   const db = client()
-  const [profileResult, planResult, subscriptionResult, billingResult, dayResult] = await Promise.all([
+  const [profileResult, planResult, subscriptionResult, betaResult, billingResult, dayResult] = await Promise.all([
     db.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
     db.from('plan_preferences').select('*').eq('user_id', userId).maybeSingle(),
     db.from('subscriptions').select('plan_mode, status, current_period_end, cancel_at_period_end').eq('user_id', userId).maybeSingle(),
+    db.rpc('beta_plan_for_current_user'),
     db.rpc('is_billing_enabled'),
     db.from('day_logs').select('id, log_date, workout_done, meal_entries(*)').eq('user_id', userId).eq('log_date', date).maybeSingle(),
   ])
 
-  const error = profileResult.error || planResult.error || subscriptionResult.error || billingResult.error || dayResult.error
+  const error = profileResult.error || planResult.error || subscriptionResult.error || betaResult.error || billingResult.error || dayResult.error
   if (error) throw error
 
   const day = dayResult.data as (Record<string, unknown> & { meal_entries?: Record<string, unknown>[] }) | null
@@ -84,6 +86,7 @@ export async function loadUserState(userId: string, date: string): Promise<UserS
       currentPeriodEnd: subscriptionResult.data.current_period_end,
       cancelAtPeriodEnd: Boolean(subscriptionResult.data.cancel_at_period_end),
     } : null,
+    betaPlan: betaResult.data as PlanMode | null,
     billingEnabled: Boolean(billingResult.data),
     log: {
       date,

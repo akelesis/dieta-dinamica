@@ -12,6 +12,7 @@ interface Props {
   nutrition: NutritionPlan
   preferences: PlanPreferences | null
   subscription: Subscription | null
+  betaPlan: PlanMode | null
   billingEnabled: boolean
   onSubscriptionChange: (subscription: Subscription | null) => void
   onComplete: (preferences: PlanPreferences) => void
@@ -155,6 +156,10 @@ function SubscriptionBar({ subscription }: { subscription: Subscription }) {
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível abrir o portal.'); setBusy(false) }
   }
   return <div className="subscription-bar"><span><BadgeCheck size={17} /><div><strong>{subscription.planMode === 'self' ? 'Plano básico ativo' : 'Plano Plus ativo'}</strong><small>{subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd ? `Acesso até ${new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}` : 'Assinatura ativa'}</small></div></span><button className="button secondary" disabled={busy} onClick={manage}>{busy ? <LoaderCircle className="spin" size={14} /> : <CreditCard size={14} />} Gerenciar assinatura</button>{error && <em>{error}</em>}</div>
+}
+
+function BetaAccessBar({ planMode }: { planMode: PlanMode }) {
+  return <div className="subscription-bar beta-access"><span><BadgeCheck size={17} /><div><strong>Acesso beta · {planMode === 'guided' ? 'Plano Plus' : 'Plano básico'}</strong><small>Conta liberada sem cobrança durante o programa beta.</small></div></span></div>
 }
 
 const mealIcons: Record<string, string> = { 'Café da manhã': '☀️', 'Lanche da manhã': '🍎', 'Almoço': '🥗', 'Lanche da tarde': '🥜', 'Jantar': '🍲', 'Ceia': '🌙' }
@@ -348,11 +353,13 @@ function PersonalizedPlan({ profile, nutrition, preferences, onReset }: Omit<Pro
 }
 
 export function PlanExperience(props: Props) {
-  if (props.billingEnabled && !isSubscriptionActive(props.subscription)) {
+  const paidPlan = isSubscriptionActive(props.subscription) ? props.subscription?.planMode || null : null
+  const entitledMode = props.billingEnabled ? paidPlan || props.betaPlan : null
+
+  if (props.billingEnabled && !entitledMode) {
     return <PricingScreen subscription={props.subscription} onSubscriptionChange={props.onSubscriptionChange} />
   }
 
-  const entitledMode = props.billingEnabled && props.subscription ? props.subscription.planMode : null
   const preferences = props.preferences ? { ...props.preferences, planMode: entitledMode || props.preferences.planMode || 'guided' } : null
   let content
   if (!preferences) content = <PlanOnboarding profile={props.profile} onComplete={props.onComplete} forcedMode={entitledMode || undefined} />
@@ -360,5 +367,5 @@ export function PlanExperience(props: Props) {
   else if (requiresRenalReview(preferences)) content = <ClinicalSafetyPlan profile={props.profile} onReset={props.onReset} />
   else content = <PersonalizedPlan {...props} preferences={preferences} />
 
-  return <>{props.billingEnabled && props.subscription && <SubscriptionBar subscription={props.subscription} />}{content}</>
+  return <>{props.billingEnabled && paidPlan && props.subscription && <SubscriptionBar subscription={props.subscription} />}{props.billingEnabled && !paidPlan && props.betaPlan && <BetaAccessBar planMode={props.betaPlan} />}{content}</>
 }

@@ -552,6 +552,7 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 .billing-trust { max-width: 620px; margin: 17px auto 0; }
 .billing-error { display: flex; align-items: center; gap: 8px; padding: 11px 13px; margin-top: 13px; border: 1px solid; border-radius: 11px; font-size: 9px; }
 .subscription-bar { position: relative; justify-content: space-between; margin-bottom: 20px; }
+.subscription-bar.beta-access { justify-content: flex-start; border-style: dashed; }
 .subscription-bar > span { display: flex; align-items: center; gap: 9px; color: var(--green); }
 .subscription-bar > span > div { display: flex; flex-direction: column; }
 .subscription-bar strong { font: 800 10px 'Manrope'; }

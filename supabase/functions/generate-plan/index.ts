@@ -2,6 +2,7 @@ import OpenAI from 'npm:openai@6.47.0'
 import { zodTextFormat } from 'npm:openai@6.47.0/helpers/zod'
 import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
+import { accessForUser } from '../_shared/access.ts'
 
 const PROMPT_VERSION = 6
 const cors = {
@@ -184,11 +185,8 @@ Deno.serve(async request => {
   if (!auth?.data.user || auth.error) {
     return json({ error: 'UNAUTHORIZED', message: 'Entre na sua conta para gerar o plano alimentar.' }, 401)
   }
-  const [{ data: billing }, { data: entitlement }] = await Promise.all([
-    admin.from('billing_configuration').select('enabled').eq('singleton', true).maybeSingle(),
-    admin.from('subscriptions').select('status, plan_mode').eq('user_id', auth.data.user.id).maybeSingle(),
-  ])
-  if (billing?.enabled && (!entitlement || !['active', 'trialing'].includes(entitlement.status) || entitlement.plan_mode !== 'guided')) {
+  const access = await accessForUser(admin, auth.data.user)
+  if (access.billingEnabled && access.planMode !== 'guided') {
     return json({ error: 'SUBSCRIPTION_REQUIRED', message: 'O plano personalizado requer uma assinatura ativa.' }, 402)
   }
 
