@@ -58,7 +58,7 @@ function ProfileSubscriptionCard({ subscription, onViewPlans }: { subscription: 
   const [error, setError] = useState('')
   const active = isSubscriptionActive(subscription)
   const canManage = Boolean(subscription && !['incomplete', 'incomplete_expired'].includes(subscription.status))
-  const planName = subscription?.planMode === 'guided' ? 'Plano personalizado com IA' : subscription ? 'Plano básico' : 'Nenhum plano contratado'
+  const planName = subscription?.planMode === 'guided' ? 'Plano Plus' : subscription ? 'Plano básico' : 'Nenhum plano contratado'
   const price = subscription?.planMode === 'guided'
     ? import.meta.env.VITE_GUIDED_PLAN_PRICE_LABEL || 'R$ 27,90/mês'
     : import.meta.env.VITE_BASIC_PLAN_PRICE_LABEL || 'R$ 18,90/mês'
