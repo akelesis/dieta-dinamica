@@ -4,6 +4,8 @@ import { AuthScreen } from './components/AuthScreen'
 import { Dashboard } from './components/Dashboard'
 import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
+import { PricingScreen } from './components/PlanExperience'
+import { isSubscriptionActive } from './lib/billing'
 import { deletePlanPreferences, deleteUserData, loadUserState, replaceDayLog, upsertPlanPreferences, upsertProfile } from './lib/supabase-data'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { AppTheme, DayLog, PlanPreferences, Profile, Subscription } from './types'
@@ -165,8 +167,18 @@ export default function App() {
     return <div className="app-loading"><Logo /><span>Carregando seus dados…</span></div>
   }
   if (isSupabaseConfigured && !session) return <AuthScreen />
-  if (!profile || editing) {
-    return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
+  if (!profile) {
+    return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
+  }
+  if (billingEnabled && !isSubscriptionActive(subscription)) {
+    return <div className="subscription-gate-shell">
+      <header className="subscription-gate-header"><Logo /><div><span>{session?.user.email}</span>{session && <button className="button secondary" onClick={signOut}>Sair</button>}</div></header>
+      <main className="subscription-gate-main"><PricingScreen subscription={subscription} onSubscriptionChange={setSubscription} /></main>
+      <footer>O acesso ao VivaMeta é liberado após a confirmação da assinatura.</footer>
+    </div>
+  }
+  if (editing) {
+    return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
   }
   return <Dashboard profile={profile} log={log} planPreferences={planPreferences} subscription={subscription} onSubscriptionChange={setSubscription} billingEnabled={billingEnabled} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
 }

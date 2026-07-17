@@ -3,7 +3,7 @@ import { Activity, Armchair, ArrowLeft, ArrowRight, Check, Dumbbell, Footprints,
 import type { BiologicalSex, DailyActivity, Goal, Intensity, Profile } from '../types'
 import { Logo } from './Logo'
 
-interface Props { onComplete: (profile: Profile) => void; cloudStorage?: boolean }
+interface Props { onComplete: (profile: Profile) => void; cloudStorage?: boolean; onSignOut?: () => void }
 
 const goals: { id: Goal; title: string; text: string; icon: typeof Target }[] = [
   { id: 'lose', title: 'Perder peso', text: 'Déficit calórico equilibrado', icon: Target },
@@ -18,7 +18,7 @@ const dailyActivities: { id: DailyActivity; title: string; text: string; icon: t
   { id: 'heavy', title: 'Trabalho físico', text: 'Carrego peso ou faço esforço físico frequente.', icon: Package },
 ]
 
-export function Onboarding({ onComplete, cloudStorage = false }: Props) {
+export function Onboarding({ onComplete, cloudStorage = false, onSignOut }: Props) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState<Profile>({
     name: '', age: 30, height: 170, weight: 70, sex: 'female', goal: 'lose', dailyActivity: 'sedentary', workoutsPerWeek: 3, workoutMinutes: 50, intensity: 'moderate', theme: 'nature',
@@ -30,7 +30,7 @@ export function Onboarding({ onComplete, cloudStorage = false }: Props) {
     <div className="onboarding-shell">
       <header className="onboarding-header">
         <Logo />
-        <span className="safe-note"><Leaf size={15} /> {cloudStorage ? 'Seus dados ficam sincronizados com segurança' : 'Seus dados ficam salvos neste dispositivo'}</span>
+        <div className="onboarding-account"><span className="safe-note"><Leaf size={15} /> {cloudStorage ? 'Seus dados ficam sincronizados com segurança' : 'Seus dados ficam salvos neste dispositivo'}</span>{onSignOut && <button type="button" className="button secondary" onClick={onSignOut}>Sair</button>}</div>
       </header>
       <main className="onboarding-main">
         <div className="stepper" aria-label={`Etapa ${step + 1} de 5`}>

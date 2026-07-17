@@ -133,6 +133,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 /* Onboarding */
 .onboarding-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: radial-gradient(circle at 8% 12%, rgba(199, 220, 102, .17), transparent 25%), radial-gradient(circle at 92% 85%, rgba(36, 103, 86, .10), transparent 27%), #fbfbf7; }
 .onboarding-header { height: 84px; max-width: 1180px; width: 100%; margin: auto; padding: 0 34px; display: flex; justify-content: space-between; align-items: center; }
+.onboarding-account { display: flex; align-items: center; gap: 14px; }
+.onboarding-account .button { min-height: 39px; padding-inline: 15px; }
 .safe-note { display: flex; gap: 7px; align-items: center; color: #728078; font-size: 12px; }
 .onboarding-main { width: min(760px, calc(100% - 40px)); margin: auto; padding: 28px 0 50px; }
 .stepper { width: 210px; display: flex; gap: 8px; margin: 0 auto 34px; }
@@ -515,6 +517,12 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 [data-theme='dark'] .modal-backdrop { background: rgba(1, 7, 6, .75); }
 
 /* Stripe billing */
+.subscription-gate-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--lime) 17%, transparent), transparent 25%), radial-gradient(circle at 92% 85%, color-mix(in srgb, var(--green) 10%, transparent), transparent 27%), var(--app-bg); }
+.subscription-gate-header { width: min(1180px, 100%); min-height: 84px; display: flex; justify-content: space-between; align-items: center; gap: 20px; margin: auto; padding: 18px 34px; }
+.subscription-gate-header > div { min-width: 0; display: flex; align-items: center; gap: 13px; }
+.subscription-gate-header > div > span { overflow: hidden; max-width: 260px; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.subscription-gate-main { width: min(1040px, calc(100% - 40px)); margin: auto; padding: 28px 0 50px; }
+.subscription-gate-shell > footer { padding: 20px; color: var(--muted); text-align: center; font-size: 10px; }
 .billing-page { max-width: 980px; margin: 0 auto; }
 .billing-intro { max-width: 700px; margin: 4px auto 26px; text-align: center; }
 .billing-intro .date-label { justify-content: center; }
@@ -551,6 +559,10 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 .subscription-bar em { position: absolute; right: 15px; bottom: -16px; color: #a15d50; font-size: 8px; font-style: normal; }
 
 @media (max-width: 700px) {
+  .subscription-gate-header { min-height: 70px; padding: 13px 20px; }
+  .subscription-gate-header > div > span { display: none; }
+  .subscription-gate-header .button { min-height: 39px; padding-inline: 15px; }
+  .subscription-gate-main { width: min(100% - 28px, 520px); padding-top: 18px; }
   .billing-intro h1 { font-size: 25px; }
   .pricing-grid { grid-template-columns: 1fr; }
   .pricing-card { min-height: 400px; padding: 23px; }

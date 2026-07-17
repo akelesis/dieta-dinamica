@@ -87,7 +87,7 @@ function PlanOnboarding({ profile, onComplete, forcedMode }: Pick<Props, 'profil
   )
 }
 
-function PricingScreen({ subscription, onSubscriptionChange }: Pick<Props, 'subscription' | 'onSubscriptionChange'>) {
+export function PricingScreen({ subscription, onSubscriptionChange }: Pick<Props, 'subscription' | 'onSubscriptionChange'>) {
   const checkoutState = new URLSearchParams(window.location.search).get('checkout')
   const [busy, setBusy] = useState<PlanMode | 'portal' | ''>('')
   const [message, setMessage] = useState('')
