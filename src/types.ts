@@ -121,7 +121,7 @@ export interface GeneratedMeal {
   time: string
   title: string
   ingredients: PlanIngredient[]
-  preparation: string
+  preparation?: string
   calories: number
   protein: number
   carbs: number
@@ -155,4 +155,6 @@ export interface GeneratedPlanResponse {
   model: string
   generatedAt: string
   cached: boolean
+  reviewId?: string
+  reviewStatus?: 'pending' | 'in_review' | 'approved'
 }

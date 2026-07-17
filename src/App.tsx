@@ -4,6 +4,7 @@ import { AuthScreen } from './components/AuthScreen'
 import { Dashboard } from './components/Dashboard'
 import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
+import { NutritionistDashboard } from './components/NutritionistDashboard'
 import { PricingScreen } from './components/PlanExperience'
 import { isSubscriptionActive } from './lib/billing'
 import { deletePlanPreferences, deleteUserData, loadUserState, replaceDayLog, upsertPlanPreferences, upsertProfile } from './lib/supabase-data'
@@ -26,6 +27,7 @@ export default function App() {
   const [logs, setLogs] = useState<Record<string, DayLog>>(() => isSupabaseConfigured ? {} : readLocal<Record<string, DayLog>>(LOGS_KEY) || {})
   const [planPreferences, setPlanPreferences] = useState<PlanPreferences | null>(() => isSupabaseConfigured ? null : readLocal<PlanPreferences>(PLAN_KEY))
   const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [role, setRole] = useState<'user' | 'nutritionist'>('user')
   const [betaPlan, setBetaPlan] = useState<PlanMode | null>(null)
   const [billingEnabled, setBillingEnabled] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
@@ -60,6 +62,7 @@ export default function App() {
         setProfile(null)
         setPlanPreferences(null)
         setSubscription(null)
+        setRole('user')
         setBetaPlan(null)
         setBillingEnabled(false)
         setLogs({})
@@ -76,6 +79,7 @@ export default function App() {
       .then(state => {
         if (!active) return
         setProfile(state.profile)
+        setRole(state.role)
         if (state.profile?.theme) setTheme(state.profile.theme)
         setPlanPreferences(state.planPreferences)
         setSubscription(state.subscription)
@@ -170,6 +174,7 @@ export default function App() {
     return <div className="app-loading"><Logo /><span>Carregando seus dados…</span></div>
   }
   if (isSupabaseConfigured && !session) return <AuthScreen />
+  if (role === 'nutritionist' && session) return <NutritionistDashboard onSignOut={signOut} />
   if (!profile) {
     return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
   }

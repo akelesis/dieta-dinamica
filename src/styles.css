@@ -575,3 +575,106 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 
 [data-theme='dark'] .pricing-card, [data-theme='dark'] .billing-status, [data-theme='dark'] .billing-trust, [data-theme='dark'] .subscription-bar { background: var(--surface); border-color: var(--line); }
 [data-theme='dark'] .billing-status.warning, [data-theme='dark'] .billing-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }
+
+/* Nutritionist review workspace */
+.nutritionist-shell { min-height: 100vh; color: var(--ink); background: radial-gradient(circle at 8% 8%, color-mix(in srgb, var(--lime) 13%, transparent), transparent 26%), var(--app-bg); }
+.nutritionist-header { min-height: 76px; display: flex; justify-content: space-between; align-items: center; padding: 15px max(24px, calc((100vw - 1220px) / 2)); background: color-mix(in srgb, var(--surface) 92%, transparent); border-bottom: 1px solid var(--line); backdrop-filter: blur(16px); }
+.nutritionist-header-actions { display: flex; align-items: center; gap: 18px; }
+.nutritionist-header-actions > span { display: flex; align-items: center; gap: 7px; color: var(--green); font: 800 10px 'Manrope'; }
+.nutritionist-main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 38px 0 64px; }
+.nutritionist-title { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 22px; }
+.nutritionist-title > div { display: flex; align-items: center; gap: 14px; }
+.nutritionist-title > div > span { width: 47px; height: 47px; display: grid; place-items: center; color: var(--green); background: var(--mint); border-radius: 14px; }
+.nutritionist-title small { color: var(--green); font: 800 9px 'Manrope'; text-transform: uppercase; letter-spacing: .45px; }
+.nutritionist-title h1 { margin: 3px 0 2px; font: 800 29px 'Manrope'; letter-spacing: -.8px; }
+.nutritionist-title p { margin: 0; color: var(--muted); font-size: 10px; }
+.nutritionist-title > b { padding: 8px 12px; color: var(--green); background: var(--mint); border-radius: 22px; font: 800 9px 'Manrope'; }
+.review-queue { display: grid; gap: 11px; }
+.review-queue-card { position: relative; display: grid; grid-template-columns: 170px 1fr auto; grid-template-rows: auto auto; align-items: center; gap: 9px 18px; padding: 20px 52px 20px 20px; color: var(--ink); text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 7px 24px rgba(28,61,51,.035); cursor: pointer; transition: transform .18s ease, border-color .18s ease; }
+.review-queue-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--green) 38%, var(--line)); }
+.review-queue-card > .review-status { grid-column: 1; justify-self: start; }
+.review-queue-card > strong { grid-column: 1; font: 800 15px 'Manrope'; }
+.review-queue-card > div { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-wrap: wrap; gap: 7px; }
+.review-queue-card > div span { padding: 7px 9px; color: var(--muted); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 8px; font-size: 9px; }
+.review-queue-card > small { grid-column: 3; grid-row: 1 / span 2; display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 8px; }
+.review-queue-card > svg { position: absolute; right: 20px; color: var(--green); }
+.review-status { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 18px; font: 800 8px 'Manrope'; white-space: nowrap; }
+.review-status.pending { color: #8d6225; background: #fff3d7; }
+.review-status.in_review { color: #35617d; background: #e9f4fb; }
+.review-status.approved { color: var(--green); background: var(--mint); }
+.review-empty { min-height: 250px; display: flex; justify-content: center; align-items: center; flex-direction: column; gap: 8px; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 18px; }
+.review-empty h2 { margin: 4px 0 0; color: var(--ink); font: 800 17px 'Manrope'; }
+.review-empty p { margin: 0; font-size: 10px; }
+.review-editor-header { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 22px; margin-bottom: 20px; }
+.review-editor-header > div:nth-child(2) h1 { margin: 5px 0 2px; font: 800 25px 'Manrope'; }
+.review-editor-header > div:nth-child(2) p { margin: 0; color: var(--muted); font-size: 9px; }
+.review-editor-header > div:last-child { display: flex; gap: 8px; }
+.anonymous-context { padding: 20px; margin-bottom: 14px; }
+.anonymous-context-title { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 14px; color: var(--green); border-bottom: 1px solid var(--line); }
+.anonymous-context-title > div { display: flex; flex-direction: column; }
+.anonymous-context-title strong { font: 800 11px 'Manrope'; }
+.anonymous-context-title span { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.context-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.context-grid > span { min-width: 0; display: flex; flex-direction: column; padding: 10px 12px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 10px; }
+.context-grid .context-wide { grid-column: 1 / -1; }
+.context-grid small { color: var(--muted); font-size: 7px; text-transform: uppercase; letter-spacing: .35px; }
+.context-grid b { overflow-wrap: anywhere; margin-top: 4px; font: 700 9px/1.45 'Manrope'; }
+.review-plan-summary { display: grid; grid-template-columns: 1fr auto; gap: 18px; padding: 18px 20px; margin-bottom: 14px; }
+.review-plan-summary label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 8px; }
+.review-plan-summary textarea { min-height: 72px; resize: vertical; padding: 10px 12px; color: var(--ink); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 10px; font: 500 10px/1.5 'Inter', sans-serif; }
+.review-plan-summary > div { display: flex; align-items: stretch; gap: 8px; }
+.review-plan-summary > div > span { min-width: 130px; display: flex; justify-content: center; flex-direction: column; padding: 10px 12px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 10px; }
+.review-plan-summary small { color: var(--muted); font-size: 7px; }
+.review-plan-summary b { margin-top: 3px; font: 800 10px 'Manrope'; }
+.review-meal-list { display: grid; gap: 12px; }
+.review-meal-card { overflow: hidden; }
+.review-meal-heading { display: grid; grid-template-columns: 170px 100px minmax(220px, 1fr) 36px; gap: 8px; padding: 13px; background: var(--surface-soft); border-bottom: 1px solid var(--line); }
+.review-meal-heading input, .review-ingredient-row input, .review-ingredient-row select, .review-meal-macros input { min-width: 0; padding: 9px 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: 600 9px 'Inter', sans-serif; }
+.review-meal-heading > button, .review-ingredient-row > button { display: grid; place-items: center; color: #a15d50; background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.review-meal-heading > button:hover, .review-ingredient-row > button:hover { background: #fff0ed; }
+.review-ingredients { padding: 11px 13px 0; }
+.review-ingredient-row { display: grid; grid-template-columns: minmax(180px, 2fr) 90px 135px minmax(150px, 1.4fr) 90px 34px; gap: 7px; padding: 5px 0; }
+.review-add-row { display: flex; align-items: center; gap: 5px; margin: 8px 13px 11px; padding: 7px 9px; color: var(--green); background: transparent; border: 1px dashed color-mix(in srgb, var(--green) 35%, var(--line)); border-radius: 8px; font: 700 8px 'Manrope'; cursor: pointer; }
+.review-meal-macros { display: flex; align-items: center; gap: 9px; padding: 11px 13px; background: var(--surface-soft); border-top: 1px solid var(--line); }
+.review-meal-macros label { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 8px; }
+.review-meal-macros input { width: 62px; }
+.review-meal-macros > strong { margin-left: auto; color: var(--green); font: 800 11px 'Manrope'; }
+.review-add-meal { margin-top: 12px; }
+.nutritionist-error { position: fixed; right: 22px; bottom: 22px; z-index: 20; max-width: 430px; padding: 12px 15px; color: #8f493d; background: #fff1ed; border: 1px solid #e7c3bb; border-radius: 12px; box-shadow: var(--shadow); font-size: 9px; }
+.meal-preparation.pending { color: var(--muted); border-style: dashed; }
+.professional-alert.approved { color: var(--green); background: var(--mint); border-color: color-mix(in srgb, var(--green) 20%, var(--line)); }
+
+@media (max-width: 850px) {
+  .nutritionist-main { width: min(100% - 28px, 680px); padding-top: 25px; }
+  .nutritionist-header { padding-inline: 18px; }
+  .nutritionist-header-actions > span { display: none; }
+  .review-queue-card { grid-template-columns: 1fr; grid-template-rows: auto; }
+  .review-queue-card > .review-status, .review-queue-card > strong, .review-queue-card > div, .review-queue-card > small { grid-column: 1; grid-row: auto; }
+  .review-editor-header { grid-template-columns: 1fr; gap: 10px; }
+  .review-editor-header > div:last-child { display: grid; grid-template-columns: 1fr 1fr; }
+  .context-grid, .review-plan-summary { grid-template-columns: 1fr; }
+  .review-plan-summary > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .review-meal-heading { grid-template-columns: 1fr 90px 36px; }
+  .review-meal-heading input:nth-child(3) { grid-column: 1 / -1; grid-row: 2; }
+  .review-ingredient-row { grid-template-columns: minmax(0, 1fr) 75px 34px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .review-ingredient-row select, .review-ingredient-row input:nth-child(4), .review-ingredient-row input:nth-child(5) { grid-column: span 1; }
+  .review-ingredient-row > button { grid-column: 3; grid-row: 1; }
+  .review-meal-macros { align-items: flex-start; flex-wrap: wrap; }
+  .review-meal-macros > strong { width: 100%; margin-left: 0; }
+}
+
+@media (max-width: 520px) {
+  .nutritionist-title { align-items: flex-start; flex-direction: column; }
+  .review-editor-header > div:last-child, .context-grid, .review-plan-summary > div { grid-template-columns: 1fr; }
+  .review-meal-heading { grid-template-columns: 1fr 36px; }
+  .review-meal-heading input:nth-child(2) { grid-column: 1; grid-row: 2; width: 120px; }
+  .review-meal-heading input:nth-child(3) { grid-row: 3; }
+  .review-meal-heading > button { grid-column: 2; grid-row: 1; }
+  .review-ingredient-row { grid-template-columns: 1fr 70px 32px; }
+  .review-ingredient-row select, .review-ingredient-row input:nth-child(4), .review-ingredient-row input:nth-child(5) { grid-column: 1 / span 2; }
+}
+
+[data-theme='dark'] .nutritionist-header, [data-theme='dark'] .review-queue-card, [data-theme='dark'] .review-empty, [data-theme='dark'] .review-meal-card { background: var(--surface); border-color: var(--line); }
+[data-theme='dark'] .review-status.pending { color: #f3cd83; background: #3a3020; }
+[data-theme='dark'] .review-status.in_review { color: #9bc9e5; background: #233746; }
+[data-theme='dark'] .nutritionist-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }

@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
 import { accessForUser } from '../_shared/access.ts'
 
-const PROMPT_VERSION = 6
+const PROMPT_VERSION = 7
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -61,7 +61,6 @@ const Meal = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/),
   title: z.string().min(3).max(120),
   ingredients: z.array(Ingredient).min(2).max(10),
-  preparation: z.string().min(10).max(350),
   calories: z.number().int().positive(),
   protein: z.number().int().nonnegative(),
   carbs: z.number().int().nonnegative(),
@@ -80,6 +79,22 @@ const NutritionPlanOutput = z.object({
 
 type Profile = z.infer<typeof ProfileInput>
 type Preferences = z.infer<typeof PreferencesInput>
+
+function accessCycleKey(access: Awaited<ReturnType<typeof accessForUser>>) {
+  if (access.source === 'subscription') return `stripe:${access.periodEnd || access.periodStart || 'legacy'}`
+  const month = new Date().toISOString().slice(0, 7)
+  return `${access.source || 'free'}:${month}`
+}
+
+function redactNotes(value: string, profileName: string, email?: string) {
+  let result = value.replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[e-mail removido]')
+  for (const part of profileName.split(/\s+/).filter(part => part.length >= 3)) {
+    const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    result = result.replace(new RegExp(escaped, 'gi'), '[nome removido]')
+  }
+  if (email) result = result.replaceAll(email, '[e-mail removido]')
+  return result
+}
 
 function secretKey() {
   try {
@@ -195,20 +210,24 @@ Deno.serve(async request => {
     return json({ error: 'INVALID_PLAN_INPUT', message: 'Os dados do perfil ou do plano estão incompletos.' }, 400)
   }
 
-  const { profile, preferences, force } = parsed.data
-  if (preferences.healthConditions.includes('kidney_disease')) {
-    return json({
-      error: 'CLINICAL_REVIEW_REQUIRED',
-      message: 'Doença renal exige plano individualizado com estágio, exames e tipo de tratamento. A geração automática foi pausada por segurança.',
-    }, 422)
-  }
+  const { profile, preferences } = parsed.data
   const nutrition = nutritionFor(profile)
   const mealSchedule = schedule(preferences)
   const inputHash = await hashInput({ profile, preferences, nutrition, promptVersion: PROMPT_VERSION })
-  const { data: cached } = await admin.from('generated_plans').select('*').eq('user_id', auth.data.user.id).maybeSingle()
-
-  if (!force && cached?.input_hash === inputHash && cached.prompt_version === PROMPT_VERSION) {
-    return json({ plan: cached.plan_json, model: cached.source_model, generatedAt: cached.updated_at, cached: true })
+  const cycleKey = accessCycleKey(access)
+  const { data: existingReview, error: existingError } = await admin.from('diet_reviews')
+    .select('id, status, draft_plan, approved_plan, source_model, updated_at')
+    .eq('user_id', auth.data.user.id).eq('cycle_key', cycleKey).maybeSingle()
+  if (existingError) return json({ error: 'REVIEW_LOOKUP_FAILED', message: 'Não foi possível consultar sua revisão agora.' }, 500)
+  if (existingReview) {
+    return json({
+      plan: existingReview.status === 'approved' ? existingReview.approved_plan : existingReview.draft_plan,
+      model: existingReview.source_model,
+      generatedAt: existingReview.updated_at,
+      cached: true,
+      reviewId: existingReview.id,
+      reviewStatus: existingReview.status,
+    })
   }
 
   const apiKey = Deno.env.get('OPENAI_API_KEY')
@@ -248,10 +267,12 @@ REGRAS OBRIGATÓRIAS:
 - Almoço e jantar devem ser preparações diferentes. Não repita no jantar a mesma combinação de carboidrato, leguminosa e proteína usada no almoço.
 - Respeite integralmente estilo alimentar, restrições e alimentos evitados. Use preferidos quando forem compatíveis.
 - Considere as condições de saúde estruturadas apenas como sinal de cautela educativa; não prescreva tratamento clínico nem invente restrições laboratoriais.
+- Em doença renal, não conclua que todo alimento rico em potássio está proibido nem que está liberado: use uma seleção conservadora, não destaque alegações clínicas e deixe a decisão final para o nutricionista, que receberá as observações do usuário.
 - Priorize alimentos comuns no Brasil e respeite o orçamento e o tempo de preparo.
 - A soma real das calorias dos ingredientes deve ficar entre 95% e 100% da meta sem treino. Pode ficar até 5% abaixo, mas nunca acima da meta. Aproxime proteína, carboidratos e gorduras dos alvos.
 - Calorias dos ingredientes devem somar aproximadamente as calorias da refeição. Os totais diários devem refletir a soma das refeições.
-- Não prescreva tratamento para doenças e não faça promessas clínicas. Se possuiCondicaoDeSaude for verdadeiro, mantenha a sugestão conservadora e inclua orientação para validação profissional.
+- Não gere modo de preparo. O preparo será criado somente depois que um nutricionista confirmar os ingredientes e as quantidades.
+- Não prescreva tratamento para doenças e não faça promessas clínicas. Se possuiCondicaoDeSaude for verdadeiro, mantenha a sugestão conservadora e inclua orientação para validação profissional obrigatória.
 - Escreva em português do Brasil, de forma direta e sem texto promocional.`
 
   try {
@@ -315,16 +336,41 @@ REGRAS OBRIGATÓRIAS:
       return json({ error: 'PLAN_CALORIE_RANGE_FAILED', message: 'Não foi possível ajustar as porções dentro da faixa calórica. Gere outra versão.' }, 422)
     }
     const generatedAt = new Date().toISOString()
-    const { error: saveError } = await admin.from('generated_plans').upsert({
+    const { data: storedPreferences } = await admin.from('plan_preferences').select('health_notes').eq('user_id', auth.data.user.id).maybeSingle()
+    const contextSnapshot = {
+      profile: {
+        age: profile.age, sex: profile.sex, height: profile.height, weight: profile.weight,
+        goal: profile.goal, dailyActivity: profile.dailyActivity, workoutsPerWeek: profile.workoutsPerWeek,
+        workoutMinutes: profile.workoutMinutes, intensity: profile.intensity,
+      },
+      nutrition,
+      preferences: {
+        ...preferences,
+        healthNotes: redactNotes(String(storedPreferences?.health_notes || ''), profile.name, auth.data.user.email),
+      },
+    }
+    const { data: review, error: saveError } = await admin.from('diet_reviews').insert({
       user_id: auth.data.user.id,
+      cycle_key: cycleKey,
+      status: 'pending',
+      context_snapshot: contextSnapshot,
+      draft_plan: plan,
       input_hash: inputHash,
-      plan_json: plan,
       source_model: model,
-      prompt_version: PROMPT_VERSION,
-      updated_at: generatedAt,
-    })
+      submitted_at: generatedAt,
+    }).select('id').single()
+    if (saveError?.code === '23505') {
+      const { data: current } = await admin.from('diet_reviews')
+        .select('id, status, draft_plan, approved_plan, source_model, updated_at')
+        .eq('user_id', auth.data.user.id).eq('cycle_key', cycleKey).single()
+      if (current) return json({
+        plan: current.status === 'approved' ? current.approved_plan : current.draft_plan,
+        model: current.source_model, generatedAt: current.updated_at, cached: true,
+        reviewId: current.id, reviewStatus: current.status,
+      })
+    }
     if (saveError) throw saveError
-    return json({ plan, model, generatedAt, cached: false })
+    return json({ plan, model, generatedAt, cached: false, reviewId: review.id, reviewStatus: 'pending' })
   } catch (error) {
     const status = Number((error as { status?: number }).status) || 500
     return json({

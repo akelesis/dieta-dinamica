@@ -2,6 +2,7 @@ import type { DayLog, MealEntry, PlanMode, PlanPreferences, Profile, Subscriptio
 import { supabase } from './supabase'
 
 export interface UserState {
+  role: 'user' | 'nutritionist'
   profile: Profile | null
   planPreferences: PlanPreferences | null
   subscription: Subscription | null
@@ -64,6 +65,18 @@ function mealFromRow(row: Record<string, unknown>): MealEntry {
 
 export async function loadUserState(userId: string, date: string): Promise<UserState> {
   const db = client()
+  const roleResult = await db.rpc('current_user_role')
+  if (roleResult.error) throw roleResult.error
+  if (roleResult.data === 'nutritionist') return {
+    role: 'nutritionist',
+    profile: null,
+    planPreferences: null,
+    subscription: null,
+    betaPlan: null,
+    billingEnabled: false,
+    log: { date, workoutDone: false, entries: [] },
+  }
+
   const [profileResult, planResult, subscriptionResult, betaResult, billingResult, dayResult] = await Promise.all([
     db.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
     db.from('plan_preferences').select('*').eq('user_id', userId).maybeSingle(),
@@ -78,6 +91,7 @@ export async function loadUserState(userId: string, date: string): Promise<UserS
 
   const day = dayResult.data as (Record<string, unknown> & { meal_entries?: Record<string, unknown>[] }) | null
   return {
+    role: 'user',
     profile: profileResult.data ? profileFromRow(profileResult.data) : null,
     planPreferences: planResult.data ? planFromRow(planResult.data) : null,
     subscription: subscriptionResult.data ? {

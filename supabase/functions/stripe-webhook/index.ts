@@ -37,6 +37,9 @@ Deno.serve(async request => {
     const periodEnd = firstItem && 'current_period_end' in firstItem
       ? new Date(firstItem.current_period_end * 1000).toISOString()
       : null
+    const periodStart = firstItem && 'current_period_start' in firstItem
+      ? new Date(firstItem.current_period_start * 1000).toISOString()
+      : null
     const { error } = await adminClient().rpc('process_stripe_subscription_event', {
       p_event_id: event.id,
       p_event_type: event.type,
@@ -46,6 +49,7 @@ Deno.serve(async request => {
       p_price_id: priceId,
       p_plan_mode: planMode,
       p_status: event.type === 'customer.subscription.deleted' ? 'canceled' : subscription.status,
+      p_current_period_start: periodStart,
       p_current_period_end: periodEnd,
       p_cancel_at_period_end: subscription.cancel_at_period_end,
     })
