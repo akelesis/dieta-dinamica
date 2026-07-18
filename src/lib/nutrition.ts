@@ -8,20 +8,24 @@ export function calculatePlan(profile: Profile): NutritionPlan {
   const sexOffset = profile.sex === 'male' ? 5 : -161
   const bmr = Math.round(10 * profile.weight + 6.25 * profile.height - 5 * profile.age + sexOffset)
   const activityFactor = dailyActivityFactors[profile.dailyActivity || 'light']
-  const restTarget = Math.max(1200, Math.round((bmr * activityFactor + goalAdjustments[profile.goal]) / 10) * 10)
+  const baseTarget = Math.max(1200, Math.round((bmr * activityFactor + goalAdjustments[profile.goal]) / 10) * 10)
   const rawBurn = intensityMet[profile.intensity] * profile.weight * (profile.workoutMinutes / 60)
-  const workoutBonus = Math.round((rawBurn * 0.75) / 10) * 10
-  const activeTarget = restTarget + workoutBonus
+  const workoutCaloriesPerSession = Math.round((rawBurn * 0.75) / 10) * 10
+  const weeklyWorkoutCalories = workoutCaloriesPerSession * profile.workoutsPerWeek
+  const averageWorkoutCalories = Math.round((weeklyWorkoutCalories / 7) / 10) * 10
+  const dailyTarget = baseTarget + averageWorkoutCalories
   const proteinPerKg = profile.goal === 'gain' ? 2 : profile.goal === 'lose' ? 1.8 : 1.6
   const protein = Math.round(profile.weight * proteinPerKg)
   const fat = Math.round(profile.weight * 0.8)
-  const carbs = Math.max(0, Math.round((restTarget - protein * 4 - fat * 9) / 4))
+  const carbs = Math.max(0, Math.round((dailyTarget - protein * 4 - fat * 9) / 4))
 
   return {
     bmr,
-    restTarget,
-    activeTarget,
-    workoutBonus,
+    baseTarget,
+    dailyTarget,
+    workoutCaloriesPerSession,
+    weeklyWorkoutCalories,
+    averageWorkoutCalories,
     protein,
     carbs,
     fat,

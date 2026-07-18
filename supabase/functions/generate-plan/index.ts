@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
 import { accessForUser } from '../_shared/access.ts'
 
-const PROMPT_VERSION = 7
+const PROMPT_VERSION = 8
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -131,13 +131,16 @@ function nutritionFor(profile: Profile) {
   const dailyActivityFactors = { sedentary: 1.2, light: 1.25, active: 1.4, heavy: 1.55 }
   const sexOffset = profile.sex === 'male' ? 5 : -161
   const bmr = Math.round(10 * profile.weight + 6.25 * profile.height - 5 * profile.age + sexOffset)
-  const restTarget = Math.max(1200, Math.round((bmr * dailyActivityFactors[profile.dailyActivity] + goalAdjustments[profile.goal]) / 10) * 10)
+  const baseTarget = Math.max(1200, Math.round((bmr * dailyActivityFactors[profile.dailyActivity] + goalAdjustments[profile.goal]) / 10) * 10)
   const rawBurn = intensityMet[profile.intensity] * profile.weight * (profile.workoutMinutes / 60)
-  const workoutBonus = Math.round((rawBurn * .75) / 10) * 10
+  const workoutCaloriesPerSession = Math.round((rawBurn * .75) / 10) * 10
+  const weeklyWorkoutCalories = workoutCaloriesPerSession * profile.workoutsPerWeek
+  const averageWorkoutCalories = Math.round((weeklyWorkoutCalories / 7) / 10) * 10
+  const dailyTarget = baseTarget + averageWorkoutCalories
   const protein = Math.round(profile.weight * (profile.goal === 'gain' ? 2 : profile.goal === 'lose' ? 1.8 : 1.6))
   const fat = Math.round(profile.weight * .8)
-  const carbs = Math.max(0, Math.round((restTarget - protein * 4 - fat * 9) / 4))
-  return { restTarget, activeTarget: restTarget + workoutBonus, protein, carbs, fat }
+  const carbs = Math.max(0, Math.round((dailyTarget - protein * 4 - fat * 9) / 4))
+  return { baseTarget, dailyTarget, workoutCaloriesPerSession, weeklyWorkoutCalories, averageWorkoutCalories, protein, carbs, fat }
 }
 
 async function hashInput(value: unknown) {
@@ -242,8 +245,11 @@ Deno.serve(async request => {
     atividadeCotidiana: profile.dailyActivity,
     treinosPorSemana: profile.workoutsPerWeek,
     duracaoTreinoMin: profile.workoutMinutes,
-    metaDiaSemTreino: nutrition.restTarget,
-    metaDiaComTreino: nutrition.activeTarget,
+    metaCaloricaDiariaMedia: nutrition.dailyTarget,
+    metaBaseSemExercicios: nutrition.baseTarget,
+    gastoEstimadoPorTreino: nutrition.workoutCaloriesPerSession,
+    gastoSemanalEstimadoComTreinos: nutrition.weeklyWorkoutCalories,
+    mediaDiariaDosTreinos: nutrition.averageWorkoutCalories,
     macrosAlvo: { proteinaG: nutrition.protein, carboidratoG: nutrition.carbs, gorduraG: nutrition.fat },
     estiloAlimentar: preferences.dietaryStyle,
     restricoes: preferences.restrictions,
@@ -269,7 +275,7 @@ REGRAS OBRIGATÓRIAS:
 - Considere as condições de saúde estruturadas apenas como sinal de cautela educativa; não prescreva tratamento clínico nem invente restrições laboratoriais.
 - Em doença renal, não conclua que todo alimento rico em potássio está proibido nem que está liberado: use uma seleção conservadora, não destaque alegações clínicas e deixe a decisão final para o nutricionista, que receberá as observações do usuário.
 - Priorize alimentos comuns no Brasil e respeite o orçamento e o tempo de preparo.
-- A soma real das calorias dos ingredientes deve ficar entre 95% e 100% da meta sem treino. Pode ficar até 5% abaixo, mas nunca acima da meta. Aproxime proteína, carboidratos e gorduras dos alvos.
+- A soma real das calorias dos ingredientes deve ficar entre 95% e 100% da meta calórica diária média. Essa meta já distribui o gasto dos treinos semanais igualmente pelos sete dias e não muda entre dias com e sem treino. Pode ficar até 5% abaixo, mas nunca acima da meta. Aproxime proteína, carboidratos e gorduras dos alvos.
 - Calorias dos ingredientes devem somar aproximadamente as calorias da refeição. Os totais diários devem refletir a soma das refeições.
 - Não gere modo de preparo. O preparo será criado somente depois que um nutricionista confirmar os ingredientes e as quantidades.
 - Não prescreva tratamento para doenças e não faça promessas clínicas. Se possuiCondicaoDeSaude for verdadeiro, mantenha a sugestão conservadora e inclua orientação para validação profissional obrigatória.
@@ -311,8 +317,8 @@ REGRAS OBRIGATÓRIAS:
         const foods = meal.ingredients.map(ingredient => ingredient.name.toLocaleLowerCase('pt-BR')).join(' ')
         return foods.includes('aveia') && /\bovo(?:s)?\b/.test(foods)
       })
-      const minimum = Math.ceil(nutrition.restTarget * .95)
-      const distanceFromBand = candidate.dailyCalories > nutrition.restTarget ? candidate.dailyCalories - nutrition.restTarget : candidate.dailyCalories < minimum ? minimum - candidate.dailyCalories : 0
+      const minimum = Math.ceil(nutrition.dailyTarget * .95)
+      const distanceFromBand = candidate.dailyCalories > nutrition.dailyTarget ? candidate.dailyCalories - nutrition.dailyTarget : candidate.dailyCalories < minimum ? minimum - candidate.dailyCalories : 0
       return { eggAndOats, distanceFromBand, insideBand: distanceFromBand === 0 }
     }
 
@@ -320,9 +326,9 @@ REGRAS OBRIGATÓRIAS:
     const firstQuality = first ? assess(first) : null
     let plan = first
     if (!first || firstQuality?.eggAndOats || !firstQuality?.insideBand) {
-      const minimum = Math.ceil(nutrition.restTarget * .95)
+      const minimum = Math.ceil(nutrition.dailyTarget * .95)
       const details = !first ? 'A resposta não veio com todas as refeições.' : `A soma real ficou em ${first.dailyCalories} kcal${firstQuality?.eggAndOats ? ' e juntou ovo com aveia' : ''}.`
-      const second = await generateCandidate(`Revise completamente o plano. ${details} A soma dos ingredientes precisa ficar obrigatoriamente entre ${minimum} e ${nutrition.restTarget} kcal, sem ultrapassar o limite superior. Cumpra todas as regras de coerência. Não explique a revisão; devolva somente o plano estruturado.`)
+      const second = await generateCandidate(`Revise completamente o plano. ${details} A soma dos ingredientes precisa ficar obrigatoriamente entre ${minimum} e ${nutrition.dailyTarget} kcal, sem ultrapassar o limite superior. Cumpra todas as regras de coerência. Não explique a revisão; devolva somente o plano estruturado.`)
       const candidates = [first, second].filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
       const coherent = candidates.filter(candidate => !assess(candidate).eggAndOats)
       plan = (coherent.length ? coherent : candidates).sort((a, b) => assess(a).distanceFromBand - assess(b).distanceFromBand)[0] || null
@@ -330,9 +336,9 @@ REGRAS OBRIGATÓRIAS:
     if (!plan || assess(plan).eggAndOats) {
       return json({ error: 'PLAN_QUALITY_FAILED', message: 'A IA não conseguiu produzir uma combinação alimentar coerente. Tente novamente.' }, 422)
     }
-    plan = fitCaloriesToBand(plan, nutrition.restTarget)
-    const minimumCalories = Math.ceil(nutrition.restTarget * .95)
-    if (plan.dailyCalories < minimumCalories || plan.dailyCalories > nutrition.restTarget) {
+    plan = fitCaloriesToBand(plan, nutrition.dailyTarget)
+    const minimumCalories = Math.ceil(nutrition.dailyTarget * .95)
+    if (plan.dailyCalories < minimumCalories || plan.dailyCalories > nutrition.dailyTarget) {
       return json({ error: 'PLAN_CALORIE_RANGE_FAILED', message: 'Não foi possível ajustar as porções dentro da faixa calórica. Gere outra versão.' }, 422)
     }
     const generatedAt = new Date().toISOString()

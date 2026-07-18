@@ -1,6 +1,6 @@
 # VivaMeta
 
-Aplicação de acompanhamento alimentar com plano individualizado, diário de refeições, metas adaptadas aos dias de treino e estimativas nutricionais assistidas por IA.
+Aplicação de acompanhamento alimentar com plano individualizado, diário de refeições, meta calórica diária baseada na média semanal de treinos e estimativas nutricionais assistidas por IA.
 
 ## Funcionalidades
 
@@ -12,7 +12,8 @@ Aplicação de acompanhamento alimentar com plano individualizado, diário de re
 - diário alimentar com estimativa de calorias, proteínas e carboidratos;
 - catálogo de alimentos comuns baseado na TACO/Unicamp, com kcal e macronutrientes por 100 g;
 - cálculo determinístico pela quantidade e cache de alimentos antes de recorrer à IA;
-- meta diária adaptada conforme a realização do treino.
+- meta diária estável, com o gasto estimado dos treinos semanais distribuído pelos sete dias;
+- registro de realização do treino sem alterar a meta calórica do dia.
 
 ## Tecnologias
 

@@ -51,9 +51,11 @@ export interface DayLog {
 
 export interface NutritionPlan {
   bmr: number
-  restTarget: number
-  activeTarget: number
-  workoutBonus: number
+  baseTarget: number
+  dailyTarget: number
+  workoutCaloriesPerSession: number
+  weeklyWorkoutCalories: number
+  averageWorkoutCalories: number
   protein: number
   carbs: number
   fat: number

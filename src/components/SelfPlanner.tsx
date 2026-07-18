@@ -48,7 +48,7 @@ export function SelfPlanner({ profile, nutrition, preferences, onReset }: Props)
     fat: sum.fat + item.fat,
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [plan])
 
-  const target = nutrition.restTarget
+  const target = nutrition.dailyTarget
   const calorieDifference = Math.round(totals.calories - target)
   const percentage = target ? Math.round(totals.calories / target * 100) : 0
   const status = totals.calories > target ? 'over' : totals.calories >= target * .95 ? 'within' : 'under'
@@ -112,7 +112,7 @@ export function SelfPlanner({ profile, nutrition, preferences, onReset }: Props)
 
     <div className="self-planner-notice"><Info size={18} /><div><strong>Você decide o que entra no planejamento</strong><span>O VivaMeta apenas estima os valores nutricionais e compara com referências matemáticas. Não criamos nem prescrevemos refeições nesta modalidade.</span></div></div>
 
-    <section className="plan-hero self-planner-hero card"><div><span className="card-kicker"><Target size={16} /> Referência diária estimada</span><h2>{target.toLocaleString('pt-BR')} <small>kcal / dia</small></h2><p>Em dias com treino, a referência estimada passa para <strong>{nutrition.activeTarget.toLocaleString('pt-BR')} kcal</strong>.</p></div><div className="macro-summary"><div><strong>{nutrition.protein}g</strong><span>proteínas</span></div><div><strong>{nutrition.carbs}g</strong><span>carboidratos</span></div><div><strong>{nutrition.fat}g</strong><span>gorduras</span></div></div></section>
+    <section className="plan-hero self-planner-hero card"><div><span className="card-kicker"><Target size={16} /> Referência diária estimada</span><h2>{target.toLocaleString('pt-BR')} <small>kcal / dia</small></h2><p>Meta estável nos sete dias, já considerando a média de <strong>{nutrition.averageWorkoutCalories.toLocaleString('pt-BR')} kcal/dia</strong> dos treinos semanais.</p></div><div className="macro-summary"><div><strong>{nutrition.protein}g</strong><span>proteínas</span></div><div><strong>{nutrition.carbs}g</strong><span>carboidratos</span></div><div><strong>{nutrition.fat}g</strong><span>gorduras</span></div></div></section>
 
     <section className={`calorie-comparison card ${status}`}>
       <div className="calorie-comparison-heading"><div><span><Calculator size={17} /></span><div><strong>Seu planejamento atual</strong><small>Os totais mudam sempre que você edita uma refeição.</small></div></div><b>{percentage}% da referência</b></div>

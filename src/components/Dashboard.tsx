@@ -116,7 +116,7 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
   const [mealModal, setMealModal] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
   const plan = useMemo(() => calculatePlan(profile), [profile])
-  const target = log.workoutDone ? plan.activeTarget : plan.restTarget
+  const target = plan.dailyTarget
   const consumed = log.entries.reduce((sum, entry) => sum + entry.calories, 0)
   const macrosConsumed = useMemo(() => consumedMacros(log.entries), [log.entries])
   const proteinProgress = Math.min(macrosConsumed.protein / Math.max(plan.protein, 1) * 100, 100)
@@ -156,16 +156,16 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
 
             <section className="overview-grid">
               <article className="card calories-card">
-                <div className="card-heading"><div><span className="card-kicker"><Flame size={16} /> Meta de hoje</span><h2>{target.toLocaleString('pt-BR')} kcal</h2></div><span className={`status-pill ${log.workoutDone ? 'success' : ''}`}>{log.workoutDone ? 'Dia com treino' : 'Dia sem treino'}</span></div>
+                <div className="card-heading"><div><span className="card-kicker"><Flame size={16} /> Meta de hoje</span><h2>{target.toLocaleString('pt-BR')} kcal</h2></div><span className="status-pill success">Média diária</span></div>
                 <div className="calories-content"><ProgressRing value={consumed} total={target} /><div className="calorie-stats"><div><span className="dot consumed" /><p>Consumidas</p><strong>{consumed} <small>kcal</small></strong></div><div><span className="dot remaining" /><p>{over > 0 ? 'Acima da meta' : 'Restantes'}</p><strong>{over > 0 ? over : remaining} <small>kcal</small></strong></div></div></div>
-                <div className="adaptive-note"><Info size={16} /><span>{log.workoutDone ? `Seu treino adicionou ${plan.workoutBonus} kcal à meta de hoje.` : `Ao concluir o treino, sua meta sobe ${plan.workoutBonus} kcal.`}</span></div>
+                <div className="adaptive-note"><Info size={16} /><span>{profile.workoutsPerWeek > 0 ? `A estimativa de ${plan.weeklyWorkoutCalories} kcal dos treinos semanais foi distribuída igualmente pelos sete dias.` : 'Sua meta foi calculada sem gasto de treinos. Marcar uma atividade registra a rotina, mas não altera as calorias do dia.'}</span></div>
               </article>
 
               <article className={`card workout-card ${log.workoutDone ? 'done' : ''}`}>
                 <div className="workout-art"><span><Dumbbell size={28} /></span><span className="motion-line" /></div>
                 <div className="workout-copy"><span className="card-kicker"><Activity size={16} /> Movimento do dia</span><h2>{log.workoutDone ? 'Treino concluído!' : 'Treino de hoje'}</h2><p>{profile.workoutMinutes} min · Intensidade {intensityLabels[profile.intensity].toLowerCase()}</p></div>
                 <button className={`workout-toggle ${log.workoutDone ? 'checked' : ''}`} onClick={toggleWorkout}><span>{log.workoutDone && <Check size={16} />}</span><b>{log.workoutDone ? 'Marcar como não realizado' : 'Concluir treino'}</b></button>
-                <div className="bonus-line"><Flame size={15} /> Vale +{plan.workoutBonus} kcal na meta de hoje</div>
+                <div className="bonus-line"><Flame size={15} /> O registro do treino não altera a meta de {target.toLocaleString('pt-BR')} kcal</div>
               </article>
             </section>
 

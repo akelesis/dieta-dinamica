@@ -97,7 +97,7 @@ export function Onboarding({ onComplete, cloudStorage = false, onSignOut }: Prop
           <section className="onboarding-card">
             <div className="eyebrow"><Dumbbell size={15} /> Sua rotina</div>
             <h1>Como são os seus <em>treinos?</em></h1>
-            <p>Nos dias em que você treinar, sua meta recebe calorias extras automaticamente.</p>
+            <p>O gasto estimado dos treinos da semana será distribuído pelos sete dias, mantendo uma meta calórica diária estável.</p>
             <div className="routine-block">
               <div className="slider-header"><div><Dumbbell size={20} /><span>Treinos por semana</span></div><strong>{data.workoutsPerWeek}x</strong></div>
               <input className="range" type="range" min="0" max="7" value={data.workoutsPerWeek} onChange={event => set('workoutsPerWeek', Number(event.target.value))} />
