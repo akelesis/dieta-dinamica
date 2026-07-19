@@ -141,13 +141,26 @@ export interface MealSwapSuggestion {
   fat: number
 }
 
+export type GeneratedMenuId = 'A' | 'B' | 'C'
+
+export interface GeneratedMenuOption {
+  id: GeneratedMenuId
+  label: string
+  dailyCalories: number
+  protein: number
+  carbs: number
+  fat: number
+  meals: GeneratedMeal[]
+}
+
 export interface GeneratedNutritionPlan {
   summary: string
   dailyCalories: number
   protein: number
   carbs: number
   fat: number
-  meals: GeneratedMeal[]
+  menus: GeneratedMenuOption[]
+  meals?: GeneratedMeal[]
   dailyGuidance: string[]
   isCustomized?: boolean
 }

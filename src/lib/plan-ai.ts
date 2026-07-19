@@ -1,4 +1,5 @@
 import type { GeneratedPlanResponse, NutritionPlan, PlanPreferences, Profile } from '../types'
+import { normalizeGeneratedPlan } from './generated-plan'
 import { supabase } from './supabase'
 
 export class PlanGenerationError extends Error {
@@ -35,5 +36,6 @@ export async function generateNutritionPlan(
     throw new PlanGenerationError('PLAN_GENERATION_FAILED', message)
   }
 
-  return data as GeneratedPlanResponse
+  const response = data as GeneratedPlanResponse
+  return { ...response, plan: normalizeGeneratedPlan(response.plan) }
 }

@@ -13,10 +13,16 @@ const Meal = z.object({
   ingredients: z.array(Ingredient).min(1).max(15), calories: z.number().int().nonnegative(),
   protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(),
 })
+const MenuOption = z.object({
+  id: z.enum(['A', 'B', 'C']), label: z.string().min(3).max(30),
+  dailyCalories: z.number().int().nonnegative(), protein: z.number().int().nonnegative(),
+  carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(),
+  meals: z.array(Meal).min(1).max(8),
+})
 const Plan = z.object({
   summary: z.string().min(5).max(500), dailyCalories: z.number().int().nonnegative(),
   protein: z.number().int().nonnegative(), carbs: z.number().int().nonnegative(), fat: z.number().int().nonnegative(),
-  meals: z.array(Meal).min(1).max(8), dailyGuidance: z.array(z.string().min(3).max(220)).max(6),
+  menus: z.array(MenuOption).min(1).max(3), dailyGuidance: z.array(z.string().min(3).max(220)).max(6),
 })
 const RequestInput = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list') }),
@@ -25,22 +31,36 @@ const RequestInput = z.discriminatedUnion('action', [
   z.object({ action: z.literal('approve'), reviewId: z.string().uuid(), plan: Plan }),
 ])
 const PreparationOutput = z.object({
-  meals: z.array(z.object({ index: z.number().int().nonnegative(), preparation: z.string().min(10).max(600) })),
+  meals: z.array(z.object({ menuId: z.enum(['A', 'B', 'C']), mealIndex: z.number().int().nonnegative(), preparation: z.string().min(10).max(600) })),
 })
 
 function normalizePlan(input: z.infer<typeof Plan>) {
-  const meals = input.meals.map(meal => ({
-    ...meal,
-    preparation: undefined,
-    calories: meal.ingredients.reduce((sum, item) => sum + item.calories, 0),
-  }))
+  const ids = ['A', 'B', 'C'] as const
+  const menus = input.menus.map((menu, index) => {
+    const meals = menu.meals.map(meal => ({
+      ...meal,
+      preparation: undefined,
+      calories: meal.ingredients.reduce((sum, item) => sum + item.calories, 0),
+    }))
+    return {
+      ...menu,
+      id: ids[index],
+      label: `Cardápio ${ids[index]}`,
+      meals,
+      dailyCalories: meals.reduce((sum, meal) => sum + meal.calories, 0),
+      protein: meals.reduce((sum, meal) => sum + meal.protein, 0),
+      carbs: meals.reduce((sum, meal) => sum + meal.carbs, 0),
+      fat: meals.reduce((sum, meal) => sum + meal.fat, 0),
+    }
+  })
+  const divisor = Math.max(1, menus.length)
   return {
     ...input,
-    meals,
-    dailyCalories: meals.reduce((sum, meal) => sum + meal.calories, 0),
-    protein: meals.reduce((sum, meal) => sum + meal.protein, 0),
-    carbs: meals.reduce((sum, meal) => sum + meal.carbs, 0),
-    fat: meals.reduce((sum, meal) => sum + meal.fat, 0),
+    menus,
+    dailyCalories: Math.round(menus.reduce((sum, menu) => sum + menu.dailyCalories, 0) / divisor),
+    protein: Math.round(menus.reduce((sum, menu) => sum + menu.protein, 0) / divisor),
+    carbs: Math.round(menus.reduce((sum, menu) => sum + menu.carbs, 0) / divisor),
+    fat: Math.round(menus.reduce((sum, menu) => sum + menu.fat, 0) / divisor),
   }
 }
 
@@ -94,6 +114,10 @@ Deno.serve(async request => {
       return json(request, { review: publicReview(data) })
     }
 
+    if (plan.menus.length !== 3) {
+      return json(request, { error: 'THREE_MENUS_REQUIRED', message: 'A dieta precisa conter os cardápios A, B e C antes da aprovação.' }, 422)
+    }
+
     const apiKey = Deno.env.get('OPENAI_API_KEY')
     if (!apiKey) return json(request, { error: 'OPENAI_NOT_CONFIGURED', message: 'A geração de preparos não está configurada.' }, 503)
     const model = Deno.env.get('OPENAI_PLAN_MODEL') || 'gpt-5.4-mini'
@@ -101,16 +125,17 @@ Deno.serve(async request => {
       model,
       input: [
         { role: 'system', content: 'Escreva o modo de preparo de cada refeição usando somente os ingredientes e quantidades confirmados pelo nutricionista. Não adicione, remova nem substitua ingredientes. Seja direto, seguro e escreva em português do Brasil.' },
-        { role: 'user', content: JSON.stringify(plan.meals.map((meal, index) => ({ index, title: meal.title, ingredients: meal.ingredients }))) },
+        { role: 'user', content: JSON.stringify(plan.menus.flatMap(menu => menu.meals.map((meal, mealIndex) => ({ menuId: menu.id, mealIndex, title: meal.title, ingredients: meal.ingredients })))) },
       ],
-      max_output_tokens: 2500,
+      max_output_tokens: 7000,
       text: { format: zodTextFormat(PreparationOutput, 'confirmed_meal_preparations') },
     })
     const preparations = result.output_parsed?.meals || []
-    if (preparations.length !== plan.meals.length) return json(request, { error: 'PREPARATION_FAILED', message: 'A IA não retornou todos os modos de preparo.' }, 422)
-    const preparationMap = new Map(preparations.map(item => [item.index, item.preparation]))
-    const approvedPlan = { ...plan, meals: plan.meals.map((meal, index) => ({ ...meal, preparation: preparationMap.get(index) || '' })) }
-    if (approvedPlan.meals.some(meal => !meal.preparation)) return json(request, { error: 'PREPARATION_FAILED', message: 'Há refeições sem modo de preparo.' }, 422)
+    const mealCount = plan.menus.reduce((sum, menu) => sum + menu.meals.length, 0)
+    if (preparations.length !== mealCount) return json(request, { error: 'PREPARATION_FAILED', message: 'A IA não retornou todos os modos de preparo.' }, 422)
+    const preparationMap = new Map(preparations.map(item => [`${item.menuId}:${item.mealIndex}`, item.preparation]))
+    const approvedPlan = { ...plan, menus: plan.menus.map(menu => ({ ...menu, meals: menu.meals.map((meal, mealIndex) => ({ ...meal, preparation: preparationMap.get(`${menu.id}:${mealIndex}`) || '' })) })) }
+    if (approvedPlan.menus.some(menu => menu.meals.some(meal => !meal.preparation))) return json(request, { error: 'PREPARATION_FAILED', message: 'Há refeições sem modo de preparo.' }, 422)
     const reviewedAt = new Date().toISOString()
     const { error: updateError } = await admin.from('diet_reviews').update({
       draft_plan: plan, approved_plan: approvedPlan, status: 'approved', reviewer_id: user.id,
@@ -119,7 +144,7 @@ Deno.serve(async request => {
     if (updateError) throw updateError
     const { error: publishError } = await admin.from('generated_plans').upsert({
       user_id: row.user_id, input_hash: row.input_hash, plan_json: approvedPlan,
-      source_model: row.source_model, prompt_version: 7, updated_at: reviewedAt,
+      source_model: row.source_model, prompt_version: 9, updated_at: reviewedAt,
     })
     if (publishError) throw publishError
     return json(request, { review: publicReview({ ...row, draft_plan: plan, approved_plan: approvedPlan, status: 'approved', reviewed_at: reviewedAt, updated_at: reviewedAt }) })

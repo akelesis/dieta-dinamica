@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
 import { accessForUser } from '../_shared/access.ts'
 
-const PROMPT_VERSION = 8
+const PROMPT_VERSION = 9
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -67,13 +67,23 @@ const Meal = z.object({
   fat: z.number().int().nonnegative(),
 })
 
+const MenuOption = z.object({
+  id: z.enum(['A', 'B', 'C']),
+  label: z.string().min(3).max(30),
+  dailyCalories: z.number().int().positive(),
+  protein: z.number().int().nonnegative(),
+  carbs: z.number().int().nonnegative(),
+  fat: z.number().int().nonnegative(),
+  meals: z.array(Meal).min(3).max(6),
+})
+
 const NutritionPlanOutput = z.object({
   summary: z.string().min(10).max(350),
   dailyCalories: z.number().int().positive(),
   protein: z.number().int().nonnegative(),
   carbs: z.number().int().nonnegative(),
   fat: z.number().int().nonnegative(),
-  meals: z.array(Meal).min(3).max(6),
+  menus: z.array(MenuOption).length(3),
   dailyGuidance: z.array(z.string().min(5).max(180)).length(3),
 })
 
@@ -149,14 +159,15 @@ async function hashInput(value: unknown) {
 }
 
 type PlanCandidate = z.infer<typeof NutritionPlanOutput>
+type MenuCandidate = z.infer<typeof MenuOption>
 
-function totalPlan(plan: PlanCandidate): PlanCandidate {
-  const meals = plan.meals.map(meal => ({
+function totalMenu(menu: MenuCandidate): MenuCandidate {
+  const meals = menu.meals.map(meal => ({
     ...meal,
     calories: meal.ingredients.reduce((sum, ingredient) => sum + ingredient.calories, 0),
   }))
   return {
-    ...plan,
+    ...menu,
     meals,
     dailyCalories: meals.reduce((sum, meal) => sum + meal.calories, 0),
     protein: meals.reduce((sum, meal) => sum + meal.protein, 0),
@@ -165,8 +176,22 @@ function totalPlan(plan: PlanCandidate): PlanCandidate {
   }
 }
 
-function fitCaloriesToBand(plan: PlanCandidate, target: number) {
-  const current = totalPlan(plan)
+function totalPlan(plan: PlanCandidate): PlanCandidate {
+  const ids = ['A', 'B', 'C'] as const
+  const menus = plan.menus.map((menu, index) => totalMenu({ ...menu, id: ids[index], label: `Cardápio ${ids[index]}` }))
+  const divisor = Math.max(1, menus.length)
+  return {
+    ...plan,
+    menus,
+    dailyCalories: Math.round(menus.reduce((sum, menu) => sum + menu.dailyCalories, 0) / divisor),
+    protein: Math.round(menus.reduce((sum, menu) => sum + menu.protein, 0) / divisor),
+    carbs: Math.round(menus.reduce((sum, menu) => sum + menu.carbs, 0) / divisor),
+    fat: Math.round(menus.reduce((sum, menu) => sum + menu.fat, 0) / divisor),
+  }
+}
+
+function fitMenuToBand(menu: MenuCandidate, target: number) {
+  const current = totalMenu(menu)
   const minimum = Math.ceil(target * .95)
   if (current.dailyCalories >= minimum && current.dailyCalories <= target) return current
 
@@ -189,7 +214,11 @@ function fitCaloriesToBand(plan: PlanCandidate, target: number) {
     const macroFactor = meal.calories > 0 ? calories / meal.calories : 1
     return { ...meal, ingredients, calories, protein: Math.round(meal.protein * macroFactor), carbs: Math.round(meal.carbs * macroFactor), fat: Math.round(meal.fat * macroFactor) }
   })
-  return totalPlan({ ...current, meals })
+  return totalMenu({ ...current, meals })
+}
+
+function fitCaloriesToBand(plan: PlanCandidate, target: number) {
+  return totalPlan({ ...plan, menus: plan.menus.map(menu => fitMenuToBand(menu, target)) })
 }
 
 Deno.serve(async request => {
@@ -223,14 +252,20 @@ Deno.serve(async request => {
     .eq('user_id', auth.data.user.id).eq('cycle_key', cycleKey).maybeSingle()
   if (existingError) return json({ error: 'REVIEW_LOOKUP_FAILED', message: 'Não foi possível consultar sua revisão agora.' }, 500)
   if (existingReview) {
-    return json({
-      plan: existingReview.status === 'approved' ? existingReview.approved_plan : existingReview.draft_plan,
-      model: existingReview.source_model,
-      generatedAt: existingReview.updated_at,
-      cached: true,
-      reviewId: existingReview.id,
-      reviewStatus: existingReview.status,
-    })
+    const currentPlan = existingReview.status === 'approved' ? existingReview.approved_plan : existingReview.draft_plan
+    const hasThreeMenus = Array.isArray(currentPlan?.menus) && currentPlan.menus.length === 3
+    if (existingReview.status === 'approved' || hasThreeMenus) {
+      return json({
+        plan: currentPlan,
+        model: existingReview.source_model,
+        generatedAt: existingReview.updated_at,
+        cached: true,
+        reviewId: existingReview.id,
+        reviewStatus: existingReview.status,
+      })
+    }
+    const { error: replaceError } = await admin.from('diet_reviews').delete().eq('id', existingReview.id).neq('status', 'approved')
+    if (replaceError) return json({ error: 'LEGACY_PLAN_REPLACE_FAILED', message: 'Não foi possível atualizar o plano antigo para os cardápios A, B e C.' }, 500)
   }
 
   const apiKey = Deno.env.get('OPENAI_API_KEY')
@@ -262,10 +297,13 @@ Deno.serve(async request => {
     refeicoesObrigatorias: mealSchedule,
   }
 
-  const systemPrompt = `Você cria UM dia de plano alimentar brasileiro educativo, prático e nutricionalmente coeso.
+  const systemPrompt = `Você cria TRÊS opções completas de cardápio diário brasileiro educativo, prático e nutricionalmente coeso: A, B e C.
 
 REGRAS OBRIGATÓRIAS:
-- Entregue exatamente as refeições e horários informados em refeicoesObrigatorias, na mesma ordem.
+- Entregue exatamente 3 cardápios completos, identificados e ordenados como A, B e C.
+- CADA cardápio deve conter exatamente as refeições e horários informados em refeicoesObrigatorias, na mesma ordem.
+- A, B e C são alternativas para dias diferentes, não opções dentro da mesma refeição. Cada um deve funcionar sozinho como um dia completo.
+- Garanta variedade real entre os cardápios: não repita títulos de refeições; varie as principais fontes de proteína, carboidrato, frutas e preparações. Não crie três versões quase iguais.
 - Cada refeição deve ser um prato ou combinação que uma pessoa realmente comeria, com um título específico. Não entregue categorias vagas, listas de opções com "ou" nem alimentos desconectados.
 - Informe a quantidade exata de CADA ingrediente. Para arroz, feijão, massas, carnes, tubérculos e legumes, use gramas do alimento pronto/cozido. Inclua também uma medida caseira clara.
 - Aveia nunca é consumida pura: use-a em mingau, overnight oats, vitamina ou iogurte, com o líquido e acompanhamentos quantificados.
@@ -275,7 +313,7 @@ REGRAS OBRIGATÓRIAS:
 - Considere as condições de saúde estruturadas apenas como sinal de cautela educativa; não prescreva tratamento clínico nem invente restrições laboratoriais.
 - Em doença renal, não conclua que todo alimento rico em potássio está proibido nem que está liberado: use uma seleção conservadora, não destaque alegações clínicas e deixe a decisão final para o nutricionista, que receberá as observações do usuário.
 - Priorize alimentos comuns no Brasil e respeite o orçamento e o tempo de preparo.
-- A soma real das calorias dos ingredientes deve ficar entre 95% e 100% da meta calórica diária média. Essa meta já distribui o gasto dos treinos semanais igualmente pelos sete dias e não muda entre dias com e sem treino. Pode ficar até 5% abaixo, mas nunca acima da meta. Aproxime proteína, carboidratos e gorduras dos alvos.
+- Em CADA cardápio, a soma real das calorias dos ingredientes deve ficar entre 95% e 100% da meta calórica diária média. Essa meta já distribui o gasto dos treinos semanais igualmente pelos sete dias e não muda entre dias com e sem treino. Pode ficar até 5% abaixo, mas nunca acima da meta. Aproxime proteína, carboidratos e gorduras dos alvos em cada opção.
 - Calorias dos ingredientes devem somar aproximadamente as calorias da refeição. Os totais diários devem refletir a soma das refeições.
 - Não gere modo de preparo. O preparo será criado somente depois que um nutricionista confirmar os ingredientes e as quantidades.
 - Não prescreva tratamento para doenças e não faça promessas clínicas. Se possuiCondicaoDeSaude for verdadeiro, mantenha a sugestão conservadora e inclua orientação para validação profissional obrigatória.
@@ -292,53 +330,56 @@ REGRAS OBRIGATÓRIAS:
       const result = await openai.responses.parse({
         model,
         input,
-        max_output_tokens: 5000,
+        max_output_tokens: 12000,
         text: { format: zodTextFormat(NutritionPlanOutput, 'nutrition_plan') },
       })
-      if (!result.output_parsed || result.output_parsed.meals.length !== mealSchedule.length) return null
-      const meals = result.output_parsed.meals.map((meal, index) => ({
-        ...meal,
-        label: mealSchedule[index].label,
-        time: mealSchedule[index].time,
-        calories: meal.ingredients.reduce((sum, ingredient) => sum + ingredient.calories, 0),
+      if (!result.output_parsed || result.output_parsed.menus.length !== 3 || result.output_parsed.menus.some(menu => menu.meals.length !== mealSchedule.length)) return null
+      const ids = ['A', 'B', 'C'] as const
+      const menus = result.output_parsed.menus.map((menu, menuIndex) => ({
+        ...menu,
+        id: ids[menuIndex],
+        label: `Cardápio ${ids[menuIndex]}`,
+        meals: menu.meals.map((meal, mealIndex) => ({
+          ...meal,
+          label: mealSchedule[mealIndex].label,
+          time: mealSchedule[mealIndex].time,
+          calories: meal.ingredients.reduce((sum, ingredient) => sum + ingredient.calories, 0),
+        })),
       }))
-      return {
-        ...result.output_parsed,
-        meals,
-        dailyCalories: meals.reduce((sum, meal) => sum + meal.calories, 0),
-        protein: meals.reduce((sum, meal) => sum + meal.protein, 0),
-        carbs: meals.reduce((sum, meal) => sum + meal.carbs, 0),
-        fat: meals.reduce((sum, meal) => sum + meal.fat, 0),
-      }
+      return totalPlan({ ...result.output_parsed, menus })
     }
 
     const assess = (candidate: NonNullable<Awaited<ReturnType<typeof generateCandidate>>>) => {
-      const eggAndOats = candidate.meals.some(meal => {
+      const allMeals = candidate.menus.flatMap(menu => menu.meals)
+      const eggAndOats = allMeals.some(meal => {
         const foods = meal.ingredients.map(ingredient => ingredient.name.toLocaleLowerCase('pt-BR')).join(' ')
         return foods.includes('aveia') && /\bovo(?:s)?\b/.test(foods)
       })
       const minimum = Math.ceil(nutrition.dailyTarget * .95)
-      const distanceFromBand = candidate.dailyCalories > nutrition.dailyTarget ? candidate.dailyCalories - nutrition.dailyTarget : candidate.dailyCalories < minimum ? minimum - candidate.dailyCalories : 0
-      return { eggAndOats, distanceFromBand, insideBand: distanceFromBand === 0 }
+      const distances = candidate.menus.map(menu => menu.dailyCalories > nutrition.dailyTarget ? menu.dailyCalories - nutrition.dailyTarget : menu.dailyCalories < minimum ? minimum - menu.dailyCalories : 0)
+      const normalizedTitles = allMeals.map(meal => meal.title.toLocaleLowerCase('pt-BR').replace(/[^a-z0-9áàâãéêíóôõúç ]/gi, '').trim())
+      const duplicateTitles = new Set(normalizedTitles).size !== normalizedTitles.length
+      const distanceFromBand = distances.reduce((sum, distance) => sum + distance, 0)
+      return { eggAndOats, duplicateTitles, distanceFromBand, insideBand: distances.every(distance => distance === 0) }
     }
 
     const first = await generateCandidate()
     const firstQuality = first ? assess(first) : null
     let plan = first
-    if (!first || firstQuality?.eggAndOats || !firstQuality?.insideBand) {
+    if (!first || firstQuality?.eggAndOats || firstQuality?.duplicateTitles || !firstQuality?.insideBand) {
       const minimum = Math.ceil(nutrition.dailyTarget * .95)
-      const details = !first ? 'A resposta não veio com todas as refeições.' : `A soma real ficou em ${first.dailyCalories} kcal${firstQuality?.eggAndOats ? ' e juntou ovo com aveia' : ''}.`
-      const second = await generateCandidate(`Revise completamente o plano. ${details} A soma dos ingredientes precisa ficar obrigatoriamente entre ${minimum} e ${nutrition.dailyTarget} kcal, sem ultrapassar o limite superior. Cumpra todas as regras de coerência. Não explique a revisão; devolva somente o plano estruturado.`)
+      const details = !first ? 'A resposta não veio com os três cardápios e todas as refeições.' : `Totais por cardápio: ${first.menus.map(menu => `${menu.id}=${menu.dailyCalories} kcal`).join(', ')}${firstQuality?.eggAndOats ? '; houve combinação de ovo com aveia' : ''}${firstQuality?.duplicateTitles ? '; houve títulos repetidos entre opções' : ''}.`
+      const second = await generateCandidate(`Revise completamente os três cardápios. ${details} Em CADA cardápio, a soma dos ingredientes precisa ficar obrigatoriamente entre ${minimum} e ${nutrition.dailyTarget} kcal, sem ultrapassar o limite superior. Garanta variedade real entre A, B e C e cumpra todas as regras de coerência. Não explique a revisão; devolva somente o plano estruturado.`)
       const candidates = [first, second].filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
-      const coherent = candidates.filter(candidate => !assess(candidate).eggAndOats)
+      const coherent = candidates.filter(candidate => !assess(candidate).eggAndOats && !assess(candidate).duplicateTitles)
       plan = (coherent.length ? coherent : candidates).sort((a, b) => assess(a).distanceFromBand - assess(b).distanceFromBand)[0] || null
     }
-    if (!plan || assess(plan).eggAndOats) {
+    if (!plan || assess(plan).eggAndOats || assess(plan).duplicateTitles) {
       return json({ error: 'PLAN_QUALITY_FAILED', message: 'A IA não conseguiu produzir uma combinação alimentar coerente. Tente novamente.' }, 422)
     }
     plan = fitCaloriesToBand(plan, nutrition.dailyTarget)
     const minimumCalories = Math.ceil(nutrition.dailyTarget * .95)
-    if (plan.dailyCalories < minimumCalories || plan.dailyCalories > nutrition.dailyTarget) {
+    if (plan.menus.some(menu => menu.dailyCalories < minimumCalories || menu.dailyCalories > nutrition.dailyTarget)) {
       return json({ error: 'PLAN_CALORIE_RANGE_FAILED', message: 'Não foi possível ajustar as porções dentro da faixa calórica. Gere outra versão.' }, 422)
     }
     const generatedAt = new Date().toISOString()

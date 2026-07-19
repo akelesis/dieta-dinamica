@@ -1,4 +1,5 @@
 import type { GeneratedNutritionPlan } from '../types'
+import { normalizeGeneratedPlan } from './generated-plan'
 import { supabase } from './supabase'
 
 export interface NutritionistReviewContext {
@@ -30,17 +31,20 @@ async function invoke<T>(body: Record<string, unknown>) {
 }
 
 export async function listNutritionistReviews() {
-  return (await invoke<{ reviews: NutritionistReview[] }>({ action: 'list' })).reviews
+  return (await invoke<{ reviews: NutritionistReview[] }>({ action: 'list' })).reviews.map(review => ({ ...review, plan: normalizeGeneratedPlan(review.plan) }))
 }
 
 export async function getNutritionistReview(reviewId: string) {
-  return (await invoke<{ review: NutritionistReview }>({ action: 'get', reviewId })).review
+  const review = (await invoke<{ review: NutritionistReview }>({ action: 'get', reviewId })).review
+  return { ...review, plan: normalizeGeneratedPlan(review.plan) }
 }
 
 export async function saveNutritionistReview(reviewId: string, plan: GeneratedNutritionPlan) {
-  return (await invoke<{ review: NutritionistReview }>({ action: 'save', reviewId, plan })).review
+  const review = (await invoke<{ review: NutritionistReview }>({ action: 'save', reviewId, plan })).review
+  return { ...review, plan: normalizeGeneratedPlan(review.plan) }
 }
 
 export async function approveNutritionistReview(reviewId: string, plan: GeneratedNutritionPlan) {
-  return (await invoke<{ review: NutritionistReview }>({ action: 'approve', reviewId, plan })).review
+  const review = (await invoke<{ review: NutritionistReview }>({ action: 'approve', reviewId, plan })).review
+  return { ...review, plan: normalizeGeneratedPlan(review.plan) }
 }
