@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Activity, AlertCircle, Apple, BadgeCheck, CalendarDays, Check, ChevronRight, CircleUserRound, Clock3, CreditCard, Crown, Droplets, Dumbbell, Flame, Home, Info, Leaf, LoaderCircle, Menu, Moon, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, Apple, BadgeCheck, CalendarDays, ChartPie, Check, ChevronRight, CircleUserRound, Clock3, CreditCard, Crown, Dumbbell, Flame, Home, Info, Leaf, LoaderCircle, Menu, Moon, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
 import { isSubscriptionActive, openBillingPortal } from '../lib/billing'
 import { calculatePlan, consumedMacros, dailyActivityLabels, goalLabels, intensityLabels } from '../lib/nutrition'
 import type { AppTheme, DayLog, MealEntry, PlanMode, PlanPreferences, Profile, Subscription } from '../types'
@@ -121,6 +121,7 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
   const macrosConsumed = useMemo(() => consumedMacros(log.entries), [log.entries])
   const proteinProgress = Math.min(macrosConsumed.protein / Math.max(plan.protein, 1) * 100, 100)
   const carbsProgress = Math.min(macrosConsumed.carbs / Math.max(plan.carbs, 1) * 100, 100)
+  const fatProgress = Math.min(macrosConsumed.fat / Math.max(plan.fat, 1) * 100, 100)
   const remaining = Math.max(target - consumed, 0)
   const over = Math.max(consumed - target, 0)
   const firstName = profile.name.split(' ')[0]
@@ -172,7 +173,7 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
             <section className="metrics-grid">
               <article className="metric-card"><span className="metric-icon protein"><TrendingUp size={20} /></span><div><small>Proteína {macrosConsumed.estimated && <em>estimada</em>}</small><strong>{macrosConsumed.protein} <span>/ {plan.protein}g</span></strong></div><div className="mini-progress protein"><i style={{ width: `${proteinProgress}%` }} /></div></article>
               <article className="metric-card"><span className="metric-icon carbs"><Apple size={20} /></span><div><small>Carboidratos {macrosConsumed.estimated && <em>estimados</em>}</small><strong>{macrosConsumed.carbs} <span>/ {plan.carbs}g</span></strong></div><div className="mini-progress carbs"><i style={{ width: `${carbsProgress}%` }} /></div></article>
-              <article className="metric-card"><span className="metric-icon water"><Droplets size={20} /></span><div><small>Água sugerida</small><strong>{plan.water} <span>litros</span></strong></div><div className="mini-progress"><i style={{ width: '0%' }} /></div></article>
+              <article className="metric-card"><span className="metric-icon fat"><ChartPie size={20} /></span><div><small>Gorduras {macrosConsumed.estimated && <em>estimadas</em>}</small><strong>{macrosConsumed.fat} <span>/ {plan.fat}g</span></strong></div><div className="mini-progress fat"><i style={{ width: `${fatProgress}%` }} /></div></article>
             </section>
 
             <section className="diary-section">

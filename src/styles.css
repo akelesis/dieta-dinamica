@@ -290,11 +290,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin-top: 14px; }
 .metric-card { min-height: 82px; display: grid; grid-template-columns: 40px 1fr; grid-template-rows: 1fr 4px; align-items: center; column-gap: 10px; padding: 14px 16px; background: white; border: 1px solid #e8ebe6; border-radius: 14px; }
 .metric-icon { grid-row: 1; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; }
-.metric-icon.protein { color: #b96a45; background: #fae8de; }.metric-icon.carbs { color: #8a9841; background: #eff1d8; }.metric-icon.water { color: #3e819a; background: #e1f0f4; }
+.metric-icon.protein { color: #b96a45; background: #fae8de; }.metric-icon.carbs { color: #8a9841; background: #eff1d8; }.metric-icon.fat { color: #a56f2b; background: #f8ecd8; }
 .metric-card > div:nth-child(2) { display: flex; flex-direction: column; }
 .metric-card small { color: #849088; font-size: 9px; }.metric-card small em { margin-left: 3px; color: #9aa49e; font-size: 7px; font-style: normal; }.metric-card strong { font: 800 15px 'Manrope'; }.metric-card strong span { color: #89968f; font: 500 9px 'DM Sans'; }
 .mini-progress { grid-column: 1 / -1; height: 3px; background: #edf0ec; border-radius: 4px; overflow: hidden; }
-.mini-progress i { display: block; height: 100%; background: #c7d96d; transition: width .25s ease; }.mini-progress.protein i { background: #dc8c67; }.mini-progress.carbs i { background: #b3c45d; }
+.mini-progress i { display: block; height: 100%; background: #c7d96d; transition: width .25s ease; }.mini-progress.protein i { background: #dc8c67; }.mini-progress.carbs i { background: #b3c45d; }.mini-progress.fat i { background: #d6a24f; }
 .diary-section, .meal-plan, .settings-section { margin-top: 28px; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .section-heading > div { display: flex; align-items: center; gap: 10px; }
