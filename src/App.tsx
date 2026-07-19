@@ -42,7 +42,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    document.documentElement.style.colorScheme = theme === 'dark' ? 'dark' : 'light'
+    document.documentElement.style.colorScheme = theme === 'dark' || theme === 'lilac-night' ? 'dark' : 'light'
     localStorage.setItem(THEME_KEY, JSON.stringify(theme))
   }, [theme])
 

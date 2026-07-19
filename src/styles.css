@@ -74,6 +74,29 @@
   --hero-text: #f1d8cc;
 }
 
+[data-theme='lavender'] {
+  --green: #7256a8;
+  --green-2: #8b6fc3;
+  --mint: #eee8fa;
+  --lime: #cbb7f6;
+  --orange: #d79bbf;
+  --cream: #faf8fe;
+  --ink: #3c3152;
+  --muted: #776d87;
+  --line: #e4ddef;
+  --shadow: 0 18px 55px rgba(91, 69, 130, .11);
+  --app-bg: #f7f3fb;
+  --surface: #fffefe;
+  --surface-soft: #f1ebf8;
+  --surface-muted: #e9e1f2;
+  --sidebar: #493663;
+  --sidebar-active: #d7c3ff;
+  --hero-start: #493663;
+  --hero-end: #8064ad;
+  --hero-title: #eadcff;
+  --hero-text: #e6dcf1;
+}
+
 [data-theme='dark'] {
   --green: #8fcf79;
   --green-2: #a7db92;
@@ -98,13 +121,37 @@
   --hero-text: #c5d5ce;
 }
 
+[data-theme='lilac-night'] {
+  --green: #c6a7ff;
+  --green-2: #d7beff;
+  --mint: #342947;
+  --lime: #b893f7;
+  --orange: #e5a3c5;
+  --cream: #1e1926;
+  --ink: #f5efff;
+  --muted: #b9acc9;
+  --line: #433751;
+  --shadow: 0 18px 55px rgba(0, 0, 0, .3);
+  --app-bg: #17121f;
+  --surface: #241d2e;
+  --surface-soft: #2d2439;
+  --surface-muted: #382c46;
+  --sidebar: #120e18;
+  --sidebar-active: #b893f7;
+  --on-sidebar: #faf5ff;
+  --hero-start: #261a35;
+  --hero-end: #563b72;
+  --hero-title: #dcc4ff;
+  --hero-text: #d2c3df;
+}
+
 .theme-settings { margin-top: 12px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; }
 .theme-settings-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
 .theme-settings-heading > span { width: 38px; height: 38px; display: grid; place-items: center; color: var(--green); background: var(--mint); border-radius: 11px; }
 .theme-settings-heading > div { display: flex; flex-direction: column; }
 .theme-settings-heading strong { font: 800 13px 'Manrope'; }
 .theme-settings-heading small { margin-top: 2px; color: var(--muted); font-size: 10px; }
-.theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .theme-option { min-width: 0; position: relative; display: flex; flex-direction: column; gap: 11px; padding: 12px; text-align: left; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 13px; cursor: pointer; transition: .2s ease; }
 .theme-option:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 .theme-option.selected { border-color: var(--green); box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 18%, transparent); }
@@ -381,9 +428,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .profile-subscription-actions > span { color: var(--muted); font-size: 9px; line-height: 1.45; }
 .profile-subscription-actions .button { flex: 0 0 auto; }
 .profile-subscription-error { display: flex; align-items: center; gap: 7px; padding: 10px 23px; color: #9a594c; background: #fff4f0; border-top: 1px solid #efd0c8; font-size: 9px; }
-[data-theme='dark'] .profile-subscription-status.active { color: #a7d9bb; background: #203a2f; }
-[data-theme='dark'] .profile-subscription-status.warning { color: #f0c180; background: #45351f; }
-[data-theme='dark'] .profile-subscription-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .profile-subscription-status.active { color: #a7d9bb; background: #203a2f; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .profile-subscription-status.warning { color: #f0c180; background: #45351f; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .profile-subscription-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }
 .settings-section h2 { display: flex; gap: 8px; align-items: center; }.settings-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 18px; background: white; border: 1px solid var(--line); border-radius: 14px; }.settings-row > div { display: flex; flex-direction: column; }.settings-row strong { font-size: 12px; }.settings-row span { color: #87938d; font-size: 10px; }
 
 /* Modal */
@@ -430,7 +477,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 /* Theme overrides stay last so they win over component defaults. */
 .profile-details { background: var(--line); }
-[data-theme='dark'] .profile-banner, [data-theme='dark'] .workout-card, [data-theme='dark'] .workout-card.done { background: linear-gradient(130deg, #14241f, #355e4b); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .profile-banner, :is([data-theme='dark'], [data-theme='lilac-night']) .workout-card, :is([data-theme='dark'], [data-theme='lilac-night']) .workout-card.done { background: linear-gradient(130deg, var(--hero-start), var(--hero-end)); }
 body, .app-shell { color: var(--ink); background: var(--app-bg); transition: color .2s ease, background-color .2s ease; }
 .sidebar { background: var(--sidebar); }
 .sidebar nav button.active { box-shadow: inset 3px 0 var(--sidebar-active); }
@@ -483,14 +530,14 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 .mini-progress { background: var(--line); }
 .dot.consumed { background: var(--lime); }
 .dot.remaining { background: var(--green); }
-[data-theme='dark'] .mobile-header, [data-theme='dark'] .modal, [data-theme='dark'] .field input, [data-theme='dark'] .field select, [data-theme='dark'] .field textarea, [data-theme='dark'] .add-ingredient-form input, [data-theme='dark'] .swap-card, [data-theme='dark'] .calorie-comparison-values > div, [data-theme='dark'] .plan-generation-state { color: var(--ink); background: var(--surface); border-color: var(--line); }
-[data-theme='dark'] .generated-meal-head, [data-theme='dark'] .generated-meal-body, [data-theme='dark'] .meal-macros, [data-theme='dark'] .meal-customizer, [data-theme='dark'] .daily-guidance, [data-theme='dark'] .calorie-comparison, [data-theme='dark'] .restriction-summary, [data-theme='dark'] .professional-alert, [data-theme='dark'] .health-disclaimer { background: var(--surface-soft); border-color: var(--line); }
-[data-theme='dark'] .professional-alert:not(.approved) { color: #f0c180; background: #3a3020; border-color: #604d2c; }
-[data-theme='dark'] .plan-profile-strip > div { color: var(--ink); background: var(--surface); border-color: var(--line); }
-[data-theme='dark'] .plan-profile-strip small { color: var(--muted); }
-[data-theme='dark'] .plan-profile-strip strong { color: var(--ink); }
-[data-theme='dark'] .ingredient-list li, [data-theme='dark'] .generated-meal-head, [data-theme='dark'] .meal-macros, [data-theme='dark'] .modal-header, [data-theme='dark'] .profile-details { border-color: var(--line); }
-[data-theme='dark'] .ingredient-list li > span strong, [data-theme='dark'] .meal-preparation strong, [data-theme='dark'] .calorie-comparison-values strong, [data-theme='dark'] .calorie-comparison-heading strong, [data-theme='dark'] .customizer-heading strong, [data-theme='dark'] .swap-card > div strong { color: var(--ink); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .mobile-header, :is([data-theme='dark'], [data-theme='lilac-night']) .modal, :is([data-theme='dark'], [data-theme='lilac-night']) .field input, :is([data-theme='dark'], [data-theme='lilac-night']) .field select, :is([data-theme='dark'], [data-theme='lilac-night']) .field textarea, :is([data-theme='dark'], [data-theme='lilac-night']) .add-ingredient-form input, :is([data-theme='dark'], [data-theme='lilac-night']) .swap-card, :is([data-theme='dark'], [data-theme='lilac-night']) .calorie-comparison-values > div, :is([data-theme='dark'], [data-theme='lilac-night']) .plan-generation-state { color: var(--ink); background: var(--surface); border-color: var(--line); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .generated-meal-head, :is([data-theme='dark'], [data-theme='lilac-night']) .generated-meal-body, :is([data-theme='dark'], [data-theme='lilac-night']) .meal-macros, :is([data-theme='dark'], [data-theme='lilac-night']) .meal-customizer, :is([data-theme='dark'], [data-theme='lilac-night']) .daily-guidance, :is([data-theme='dark'], [data-theme='lilac-night']) .calorie-comparison, :is([data-theme='dark'], [data-theme='lilac-night']) .restriction-summary, :is([data-theme='dark'], [data-theme='lilac-night']) .professional-alert, :is([data-theme='dark'], [data-theme='lilac-night']) .health-disclaimer { background: var(--surface-soft); border-color: var(--line); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .professional-alert:not(.approved) { color: #f0c180; background: #3a3020; border-color: #604d2c; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .plan-profile-strip > div { color: var(--ink); background: var(--surface); border-color: var(--line); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .plan-profile-strip small { color: var(--muted); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .plan-profile-strip strong { color: var(--ink); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .ingredient-list li, :is([data-theme='dark'], [data-theme='lilac-night']) .generated-meal-head, :is([data-theme='dark'], [data-theme='lilac-night']) .meal-macros, :is([data-theme='dark'], [data-theme='lilac-night']) .modal-header, :is([data-theme='dark'], [data-theme='lilac-night']) .profile-details { border-color: var(--line); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .ingredient-list li > span strong, :is([data-theme='dark'], [data-theme='lilac-night']) .meal-preparation strong, :is([data-theme='dark'], [data-theme='lilac-night']) .calorie-comparison-values strong, :is([data-theme='dark'], [data-theme='lilac-night']) .calorie-comparison-heading strong, :is([data-theme='dark'], [data-theme='lilac-night']) .customizer-heading strong, :is([data-theme='dark'], [data-theme='lilac-night']) .swap-card > div strong { color: var(--ink); }
 
 /* Plan mode selection and self planner */
 .plan-mode-onboarding { max-width: 980px; }
@@ -570,10 +617,10 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
   .self-add-food { grid-template-columns: 1fr; }
   .self-add-food button { min-height: 39px; justify-content: center; }
 }
-[data-theme='dark'] .ingredient-list li > span, [data-theme='dark'] .ingredient-list li > b, [data-theme='dark'] .meal-preparation, [data-theme='dark'] .meal-macros, [data-theme='dark'] .swap-card p, [data-theme='dark'] .customizer-heading span { color: var(--muted); }
-[data-theme='dark'] .button.danger, [data-theme='dark'] .remove-ingredient { color: #f2a69c; background: #3c2927; border-color: #60403b; }
-[data-theme='dark'] .logo, [data-theme='dark'] .button.secondary, [data-theme='dark'] .text-button { color: var(--green); }
-[data-theme='dark'] .modal-backdrop { background: rgba(1, 7, 6, .75); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .ingredient-list li > span, :is([data-theme='dark'], [data-theme='lilac-night']) .ingredient-list li > b, :is([data-theme='dark'], [data-theme='lilac-night']) .meal-preparation, :is([data-theme='dark'], [data-theme='lilac-night']) .meal-macros, :is([data-theme='dark'], [data-theme='lilac-night']) .swap-card p, :is([data-theme='dark'], [data-theme='lilac-night']) .customizer-heading span { color: var(--muted); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .button.danger, :is([data-theme='dark'], [data-theme='lilac-night']) .remove-ingredient { color: #f2a69c; background: #3c2927; border-color: #60403b; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .logo, :is([data-theme='dark'], [data-theme='lilac-night']) .button.secondary, :is([data-theme='dark'], [data-theme='lilac-night']) .text-button { color: var(--green); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .modal-backdrop { background: rgba(1, 7, 6, .75); }
 
 /* Stripe billing */
 .subscription-gate-shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--lime) 17%, transparent), transparent 25%), radial-gradient(circle at 92% 85%, color-mix(in srgb, var(--green) 10%, transparent), transparent 27%), var(--app-bg); }
@@ -632,8 +679,8 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
   .billing-status.warning .button { width: 100%; justify-content: center; }
 }
 
-[data-theme='dark'] .pricing-card, [data-theme='dark'] .billing-status, [data-theme='dark'] .billing-trust, [data-theme='dark'] .subscription-bar { background: var(--surface); border-color: var(--line); }
-[data-theme='dark'] .billing-status.warning, [data-theme='dark'] .billing-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .pricing-card, :is([data-theme='dark'], [data-theme='lilac-night']) .billing-status, :is([data-theme='dark'], [data-theme='lilac-night']) .billing-trust, :is([data-theme='dark'], [data-theme='lilac-night']) .subscription-bar { background: var(--surface); border-color: var(--line); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .billing-status.warning, :is([data-theme='dark'], [data-theme='lilac-night']) .billing-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }
 
 /* Nutritionist review workspace */
 .nutritionist-shell { min-height: 100vh; color: var(--ink); background: radial-gradient(circle at 8% 8%, color-mix(in srgb, var(--lime) 13%, transparent), transparent 26%), var(--app-bg); }
@@ -733,7 +780,7 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
   .review-ingredient-row select, .review-ingredient-row input:nth-child(4), .review-ingredient-row input:nth-child(5) { grid-column: 1 / span 2; }
 }
 
-[data-theme='dark'] .nutritionist-header, [data-theme='dark'] .review-queue-card, [data-theme='dark'] .review-empty, [data-theme='dark'] .review-meal-card { background: var(--surface); border-color: var(--line); }
-[data-theme='dark'] .review-status.pending { color: #f3cd83; background: #3a3020; }
-[data-theme='dark'] .review-status.in_review { color: #9bc9e5; background: #233746; }
-[data-theme='dark'] .nutritionist-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .nutritionist-header, :is([data-theme='dark'], [data-theme='lilac-night']) .review-queue-card, :is([data-theme='dark'], [data-theme='lilac-night']) .review-empty, :is([data-theme='dark'], [data-theme='lilac-night']) .review-meal-card { background: var(--surface); border-color: var(--line); }
+:is([data-theme='dark'], [data-theme='lilac-night']) .review-status.pending { color: #f3cd83; background: #3a3020; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .review-status.in_review { color: #9bc9e5; background: #233746; }
+:is([data-theme='dark'], [data-theme='lilac-night']) .nutritionist-error { color: #f2a69c; background: #3c2927; border-color: #60403b; }

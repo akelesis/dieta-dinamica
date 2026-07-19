@@ -6,7 +6,7 @@ export type DietaryStyle = 'omnivore' | 'vegetarian' | 'vegan' | 'pescatarian'
 export type CookingTime = 'quick' | 'moderate' | 'flexible'
 export type FoodBudget = 'economy' | 'balanced' | 'flexible'
 export type HealthCondition = 'diabetes' | 'hypertension' | 'kidney_disease' | 'liver_disease' | 'heart_disease' | 'other'
-export type AppTheme = 'nature' | 'ocean' | 'terracotta' | 'dark'
+export type AppTheme = 'nature' | 'ocean' | 'terracotta' | 'lavender' | 'dark' | 'lilac-night'
 export type PlanMode = 'self' | 'guided'
 export type SubscriptionStatus = 'incomplete' | 'incomplete_expired' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'paused'
 

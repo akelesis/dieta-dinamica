@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Activity, AlertCircle, Apple, BadgeCheck, CalendarDays, ChartPie, Check, ChevronRight, CircleUserRound, Clock3, CreditCard, Crown, Dumbbell, Flame, Home, Info, Leaf, LoaderCircle, Menu, Moon, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, Apple, BadgeCheck, CalendarDays, ChartPie, Check, ChevronRight, CircleUserRound, Clock3, CreditCard, Crown, Dumbbell, Flame, Flower2, Home, Info, Leaf, LoaderCircle, Menu, Moon, MoonStar, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
 import { isSubscriptionActive, openBillingPortal } from '../lib/billing'
 import { calculatePlan, consumedMacros, dailyActivityLabels, goalLabels, intensityLabels } from '../lib/nutrition'
 import type { AppTheme, DayLog, MealEntry, PlanMode, PlanPreferences, Profile, Subscription } from '../types'
@@ -34,7 +34,9 @@ const themes: { id: AppTheme; title: string; description: string; icon: typeof L
   { id: 'nature', title: 'Natureza', description: 'Verde sereno e acolhedor', icon: Leaf, colors: ['#17483b', '#c7dc66', '#f7f8f4'] },
   { id: 'ocean', title: 'Oceano', description: 'Azul fresco e equilibrado', icon: Waves, colors: ['#164e63', '#67e8f9', '#f0f8fa'] },
   { id: 'terracotta', title: 'Terracota', description: 'Quente, suave e orgânico', icon: SunMedium, colors: ['#7c3f2e', '#e6a15c', '#fbf5ef'] },
+  { id: 'lavender', title: 'Lavanda', description: 'Claro, delicado e relaxante', icon: Flower2, colors: ['#7256a8', '#cbb7f6', '#f7f3fb'] },
   { id: 'dark', title: 'Noturno', description: 'Escuro e confortável', icon: Moon, colors: ['#111c1a', '#8fcf79', '#1a2724'] },
+  { id: 'lilac-night', title: 'Lilás noturno', description: 'Profundo, suave e aconchegante', icon: MoonStar, colors: ['#17121f', '#b893f7', '#2d2439'] },
 ]
 
 const subscriptionStatusLabels: Record<Subscription['status'], string> = {
