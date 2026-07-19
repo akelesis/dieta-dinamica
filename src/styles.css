@@ -21,6 +21,10 @@
   --sidebar: #173f35;
   --sidebar-active: #c7dc66;
   --on-sidebar: #ffffff;
+  --hero-start: #173f35;
+  --hero-end: #2d6756;
+  --hero-title: #d7e77f;
+  --hero-text: #c2d3cc;
 }
 
 /* Personalized color schemes */
@@ -41,6 +45,10 @@
   --surface-muted: #e0edf0;
   --sidebar: #123f50;
   --sidebar-active: #67d5e5;
+  --hero-start: #123f50;
+  --hero-end: #23758a;
+  --hero-title: #8ee6f0;
+  --hero-text: #c8e3e8;
 }
 
 [data-theme='terracotta'] {
@@ -60,6 +68,10 @@
   --surface-muted: #f0e2d9;
   --sidebar: #63372d;
   --sidebar-active: #efb36f;
+  --hero-start: #63372d;
+  --hero-end: #a1583e;
+  --hero-title: #ffd08e;
+  --hero-text: #f1d8cc;
 }
 
 [data-theme='dark'] {
@@ -80,6 +92,10 @@
   --sidebar: #0c1513;
   --sidebar-active: #9bd47e;
   --on-sidebar: #f4faf7;
+  --hero-start: #14241f;
+  --hero-end: #355e4b;
+  --hero-title: #bce695;
+  --hero-text: #c5d5ce;
 }
 
 .theme-settings { margin-top: 12px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; }
@@ -421,6 +437,16 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 .sidebar .logo > span:last-child span { color: var(--sidebar-active); }
 .sidebar .logo-mark { color: var(--sidebar); background: var(--sidebar-active); }
 .card, .metric-card, .empty-diary, .meal-row, .plan-question-card, .plan-list, .generated-meal-card, .settings-row, .theme-settings, .modal-header, .profile-details > div { background: var(--surface); border-color: var(--line); }
+.plan-hero.card { color: white; background: linear-gradient(120deg, var(--hero-start), var(--hero-end)); border-color: color-mix(in srgb, var(--hero-end) 72%, var(--line)); }
+.plan-hero h2 { color: var(--hero-title); }.plan-hero h2 small, .plan-hero p strong, .macro-summary strong { color: white; }
+.plan-hero p, .plan-hero .card-kicker, .macro-summary span, .calorie-band-note { color: var(--hero-text); }
+.macro-summary > div { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.08); }
+.plan-profile-strip > div, .plan-details-grid > div { color: var(--ink); background: var(--surface); border-color: var(--line); }
+.plan-profile-strip svg, .plan-details-grid > div > span { color: var(--green); }
+.plan-profile-strip small, .plan-details-grid small, .plan-details-grid p { color: var(--muted); }
+.plan-profile-strip strong, .plan-details-grid strong { color: var(--ink); }
+.plan-details-grid > div > span { background: var(--surface-muted); }
+.restriction-summary { color: var(--green); background: var(--surface-soft); border: 1px solid var(--line); }.restriction-summary span { color: var(--green); background: var(--surface); }
 .adaptive-note, .status-pill, .meal-symbol, .meal-preparation, .meal-macros, .generated-meal-head, .generated-meal-body, .meal-customizer, .plan-save-status { background: var(--surface-soft); }
 .button.primary { background: var(--green); }
 .button.primary:hover { background: var(--green-2); }
@@ -436,6 +462,7 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 .dot.remaining { background: var(--green); }
 [data-theme='dark'] .mobile-header, [data-theme='dark'] .modal, [data-theme='dark'] .field input, [data-theme='dark'] .field select, [data-theme='dark'] .field textarea, [data-theme='dark'] .add-ingredient-form input, [data-theme='dark'] .swap-card, [data-theme='dark'] .calorie-comparison-values > div, [data-theme='dark'] .plan-generation-state { color: var(--ink); background: var(--surface); border-color: var(--line); }
 [data-theme='dark'] .generated-meal-head, [data-theme='dark'] .generated-meal-body, [data-theme='dark'] .meal-macros, [data-theme='dark'] .meal-customizer, [data-theme='dark'] .daily-guidance, [data-theme='dark'] .calorie-comparison, [data-theme='dark'] .restriction-summary, [data-theme='dark'] .professional-alert, [data-theme='dark'] .health-disclaimer { background: var(--surface-soft); border-color: var(--line); }
+[data-theme='dark'] .professional-alert:not(.approved) { color: #f0c180; background: #3a3020; border-color: #604d2c; }
 [data-theme='dark'] .ingredient-list li, [data-theme='dark'] .generated-meal-head, [data-theme='dark'] .meal-macros, [data-theme='dark'] .modal-header, [data-theme='dark'] .profile-details { border-color: var(--line); }
 [data-theme='dark'] .ingredient-list li > span strong, [data-theme='dark'] .meal-preparation strong, [data-theme='dark'] .calorie-comparison-values strong, [data-theme='dark'] .calorie-comparison-heading strong, [data-theme='dark'] .customizer-heading strong, [data-theme='dark'] .swap-card > div strong { color: var(--ink); }
 
