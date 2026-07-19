@@ -447,6 +447,29 @@ body, .app-shell { color: var(--ink); background: var(--app-bg); transition: col
 .plan-profile-strip strong, .plan-details-grid strong { color: var(--ink); }
 .plan-details-grid > div > span { background: var(--surface-muted); }
 .restriction-summary { color: var(--green); background: var(--surface-soft); border: 1px solid var(--line); }.restriction-summary span { color: var(--green); background: var(--surface); }
+.meal-plan-time { font-size: 10px; }
+.generated-meal-head > div > strong { font-size: 11px; }
+.generated-meal-head h3 { font-size: 17px; }
+.generated-meal-head > b, .meal-head-actions > b { font-size: 19px; }
+.generated-meal-head > b small, .meal-head-actions > b small { font-size: 10px; }
+.ingredient-list li { min-height: 45px; }
+.ingredient-list li > span { font-size: 12px; line-height: 1.35; }
+.ingredient-list li > span small { margin-top: 2px; font-size: 10px; }
+.ingredient-list li > b, .ingredient-list li > div > b { font-size: 11px; }
+.meal-preparation { padding: 14px; font-size: 11px; line-height: 1.55; }
+.meal-preparation strong { margin-bottom: 4px; font-size: 11px; }
+.meal-macros { gap: 20px; padding-block: 12px; font-size: 10px; }
+.meal-macros b { font-size: 11px; }
+@media (max-width: 640px) {
+  .generated-meal-head h3 { font-size: 16px; }
+  .generated-meal-head > b, .meal-head-actions > b { font-size: 17px; }
+  .ingredient-list li > span { font-size: 11px; }
+  .ingredient-list li > span small { font-size: 9px; }
+  .meal-preparation { font-size: 10px; }
+  .meal-preparation strong { font-size: 10px; }
+  .meal-macros { gap: 8px; font-size: 9px; }
+  .meal-macros b { font-size: 10px; }
+}
 .adaptive-note, .status-pill, .meal-symbol, .meal-preparation, .meal-macros, .generated-meal-head, .generated-meal-body, .meal-customizer, .plan-save-status { background: var(--surface-soft); }
 .button.primary { background: var(--green); }
 .button.primary:hover { background: var(--green-2); }
