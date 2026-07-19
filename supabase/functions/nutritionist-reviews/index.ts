@@ -144,7 +144,7 @@ Deno.serve(async request => {
     if (updateError) throw updateError
     const { error: publishError } = await admin.from('generated_plans').upsert({
       user_id: row.user_id, input_hash: row.input_hash, plan_json: approvedPlan,
-      source_model: row.source_model, prompt_version: 9, updated_at: reviewedAt,
+      source_model: row.source_model, prompt_version: 10, updated_at: reviewedAt,
     })
     if (publishError) throw publishError
     return json(request, { review: publicReview({ ...row, draft_plan: plan, approved_plan: approvedPlan, status: 'approved', reviewed_at: reviewedAt, updated_at: reviewedAt }) })

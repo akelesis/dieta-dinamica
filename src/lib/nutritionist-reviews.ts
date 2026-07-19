@@ -5,7 +5,7 @@ import { supabase } from './supabase'
 export interface NutritionistReviewContext {
   profile: { age: number; sex: 'female' | 'male'; height: number; weight: number; goal: string; dailyActivity: string; workoutsPerWeek: number; workoutMinutes: number; intensity: string }
   nutrition: { dailyTarget?: number; baseTarget?: number; workoutCaloriesPerSession?: number; weeklyWorkoutCalories?: number; averageWorkoutCalories?: number; restTarget?: number; activeTarget?: number; protein: number; carbs: number; fat: number }
-  preferences: { dietaryStyle: string; mealsPerDay: number; restrictions: string[]; favoriteFoods: string; dislikedFoods: string; cookingTime: string; budget: string; hasHealthCondition: boolean; healthConditions: string[]; healthNotes?: string }
+  preferences: { dietaryStyle: string; mealsPerDay: number; restrictions: string[]; favoriteFoods: string; dislikedFoods: string; cookingTime: string; budget: string; workoutTime?: string; breakfastAvailability?: string; lunchAvailability?: string; dinnerAvailability?: string; hasHealthCondition: boolean; healthConditions: string[]; healthNotes?: string }
 }
 
 export interface NutritionistReview {

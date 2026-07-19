@@ -5,6 +5,7 @@ export type DailyActivity = 'sedentary' | 'light' | 'active' | 'heavy'
 export type DietaryStyle = 'omnivore' | 'vegetarian' | 'vegan' | 'pescatarian'
 export type CookingTime = 'quick' | 'moderate' | 'flexible'
 export type FoodBudget = 'economy' | 'balanced' | 'flexible'
+export type MealAvailability = 'comfortable' | 'limited' | 'very_limited'
 export type HealthCondition = 'diabetes' | 'hypertension' | 'kidney_disease' | 'liver_disease' | 'heart_disease' | 'other'
 export type AppTheme = 'nature' | 'ocean' | 'terracotta' | 'lavender' | 'dark' | 'lilac-night'
 export type PlanMode = 'self' | 'guided'
@@ -74,6 +75,10 @@ export interface PlanPreferences {
   breakfastTime: string
   lunchTime: string
   dinnerTime: string
+  workoutTime: string
+  breakfastAvailability: MealAvailability
+  lunchAvailability: MealAvailability
+  dinnerAvailability: MealAvailability
   hasHealthCondition: boolean
   healthConditions: HealthCondition[]
   healthNotes: string
