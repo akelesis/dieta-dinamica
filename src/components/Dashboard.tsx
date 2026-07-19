@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Activity, AlertCircle, Apple, BadgeCheck, CalendarDays, ChartPie, Check, ChevronRight, CircleUserRound, Clock3, CreditCard, Crown, Dumbbell, Flame, Flower2, Home, Info, Leaf, LoaderCircle, Menu, Moon, MoonStar, MoreHorizontal, Palette, Pencil, Plus, Salad, Settings, Sparkles, SunMedium, Trash2, TrendingUp, UtensilsCrossed, Waves, X } from 'lucide-react'
+import { Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { isSubscriptionActive, openBillingPortal } from '../lib/billing'
 import { calculatePlan, consumedMacros, dailyActivityLabels, goalLabels, intensityLabels } from '../lib/nutrition'
 import type { AppTheme, DayLog, MealEntry, PlanMode, PlanPreferences, Profile, Subscription } from '../types'
@@ -28,6 +29,8 @@ interface Props {
 }
 
 type View = 'today' | 'plan' | 'profile'
+const viewRoutes: Record<View, string> = { today: '/hoje', plan: '/meu-plano', profile: '/perfil' }
+const routeViews = Object.fromEntries(Object.entries(viewRoutes).map(([view, route]) => [route, view])) as Record<string, View>
 const dayLabel = () => new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).format(new Date())
 
 const themes: { id: AppTheme; title: string; description: string; icon: typeof Leaf; colors: string[] }[] = [
@@ -114,7 +117,8 @@ function ProgressRing({ value, total }: { value: number; total: number }) {
 }
 
 export function Dashboard({ profile, log, planPreferences, subscription, betaPlan, onSubscriptionChange, billingEnabled, theme, onThemeChange, onLogChange, onPlanComplete, onResetPlan, onEditProfile, onReset, onSignOut, syncStatus = 'idle', syncMessage = '' }: Props) {
-  const [view, setView] = useState<View>('today')
+  const location = useLocation()
+  const navigate = useNavigate()
   const [mealModal, setMealModal] = useState(false)
   const [mobileMenu, setMobileMenu] = useState(false)
   const plan = useMemo(() => calculatePlan(profile), [profile])
@@ -127,6 +131,8 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
   const remaining = Math.max(target - consumed, 0)
   const over = Math.max(consumed - target, 0)
   const firstName = profile.name.split(' ')[0]
+  const normalizedPath = location.pathname.replace(/\/+$/, '') || '/'
+  const view = routeViews[normalizedPath]
 
   function addMeal(entry: MealEntry) {
     onLogChange({ ...log, entries: [...log.entries, entry].sort((a, b) => a.time.localeCompare(b.time)) })
@@ -135,16 +141,18 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
   function removeMeal(id: string) { onLogChange({ ...log, entries: log.entries.filter(entry => entry.id !== id) }) }
   function toggleWorkout() { onLogChange({ ...log, workoutDone: !log.workoutDone }) }
 
-  const nav = (destination: View) => { setView(destination); setMobileMenu(false) }
+  const nav = (destination: View) => { navigate(viewRoutes[destination]); setMobileMenu(false) }
+
+  if (!view) return <Navigate to={viewRoutes.today} replace />
 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
         <div className="sidebar-top"><Logo /><button className="mobile-close icon-button" aria-label="Fechar menu" onClick={() => setMobileMenu(false)}><X size={20} /></button></div>
         <nav>
-          <button className={view === 'today' ? 'active' : ''} onClick={() => nav('today')}><Home size={19} /> Hoje</button>
-          <button className={view === 'plan' ? 'active' : ''} onClick={() => nav('plan')}><Salad size={19} /> Meu plano</button>
-          <button className={view === 'profile' ? 'active' : ''} onClick={() => nav('profile')}><CircleUserRound size={19} /> Meu perfil</button>
+          <NavLink to={viewRoutes.today} onClick={() => setMobileMenu(false)}><Home size={19} /> Hoje</NavLink>
+          <NavLink to={viewRoutes.plan} onClick={() => setMobileMenu(false)}><Salad size={19} /> Meu plano</NavLink>
+          <NavLink to={viewRoutes.profile} onClick={() => setMobileMenu(false)}><CircleUserRound size={19} /> Meu perfil</NavLink>
         </nav>
         <div className="sidebar-insight"><span><Sparkles size={16} /></span><strong>Consistência vence perfeição.</strong><p>Cada registro ajuda você a entender melhor a sua rotina.</p></div>
         <div className="sidebar-profile"><div className="avatar">{firstName.slice(0, 1).toUpperCase()}</div><div><strong>{profile.name}</strong><span>{goalLabels[profile.goal]}</span></div><MoreHorizontal size={18} /></div>
