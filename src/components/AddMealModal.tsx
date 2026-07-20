@@ -44,9 +44,21 @@ function voiceRecognitionConstructor() {
 
 const nowTime = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
+const normalizedVoiceWord = (word: string) => word.toLocaleLowerCase('pt-BR').replace(/[^a-z0-9À-ɏ]/gi, '')
+
+function normalizeVoiceTranscript(transcript: string) {
+  const normalizedWords: string[] = []
+  for (const word of transcript.trim().split(/\s+/).filter(Boolean)) {
+    const currentWord = normalizedVoiceWord(word)
+    const previousWord = normalizedWords.length ? normalizedVoiceWord(normalizedWords[normalizedWords.length - 1]) : ''
+    if (currentWord && currentWord === previousWord) continue
+    normalizedWords.push(word)
+  }
+  return normalizedWords.join(' ')
+}
+
 function mergeVoiceSegments(segments: Array<[number, string]>) {
   const mergedWords: string[] = []
-  const normalizedWord = (word: string) => word.toLocaleLowerCase('pt-BR').replace(/[^a-z0-9À-ɏ]/gi, '')
 
   for (const [, transcript] of segments.sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)) {
     const words = transcript.trim().split(/\s+/).filter(Boolean)
@@ -55,8 +67,8 @@ function mergeVoiceSegments(segments: Array<[number, string]>) {
     let overlap = 0
     const maximumOverlap = Math.min(mergedWords.length, words.length)
     for (let size = maximumOverlap; size >= 2; size -= 1) {
-      const previous = mergedWords.slice(-size).map(normalizedWord)
-      const current = words.slice(0, size).map(normalizedWord)
+      const previous = mergedWords.slice(-size).map(normalizedVoiceWord)
+      const current = words.slice(0, size).map(normalizedVoiceWord)
       if (previous.every((word, index) => word === current[index])) {
         overlap = size
         break
@@ -65,7 +77,7 @@ function mergeVoiceSegments(segments: Array<[number, string]>) {
     mergedWords.push(...words.slice(overlap))
   }
 
-  return mergedWords.join(' ')
+  return normalizeVoiceTranscript(mergedWords.join(' '))
 }
 
 export function AddMealModal({ onClose, onAdd }: Props) {
@@ -110,8 +122,9 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   }
 
   function appendTranscript(transcript: string) {
-    if (!transcript.trim()) return
-    setDescription(current => `${current.trim()}${current.trim() ? ' ' : ''}${transcript.trim()}`)
+    const normalizedTranscript = normalizeVoiceTranscript(transcript)
+    if (!normalizedTranscript) return
+    setDescription(current => normalizeVoiceTranscript(`${current.trim()} ${normalizedTranscript}`))
     resetEstimate()
   }
 

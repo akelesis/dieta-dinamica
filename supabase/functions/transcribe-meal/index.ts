@@ -19,6 +19,15 @@ const allowedAudioTypes = new Set([
   'audio/flac', 'audio/mp3', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/x-m4a', 'video/webm',
 ])
 
+function normalizeTranscript(transcript: string) {
+  const words = transcript.trim().split(/\s+/).filter(Boolean)
+  return words.filter((word, index) => {
+    if (index === 0) return true
+    const normalize = (value: string) => value.toLocaleLowerCase('pt-BR').replace(/[^a-z0-9À-ɏ]/gi, '')
+    return !normalize(word) || normalize(word) !== normalize(words[index - 1])
+  }).join(' ')
+}
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (request.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405)
@@ -53,7 +62,7 @@ Deno.serve(async request => {
     transcriptionForm.append('file', audio, audio.name || 'refeicao.webm')
     transcriptionForm.append('model', model)
     transcriptionForm.append('language', 'pt')
-    transcriptionForm.append('prompt', 'Transcreva em português do Brasil uma descrição curta de alimentos, porções, medidas caseiras e bebidas consumidas. Preserve números e unidades.')
+    transcriptionForm.append('prompt', 'Transcreva em português do Brasil uma descrição curta de alimentos, porções, medidas caseiras e bebidas consumidas. Preserve números e unidades. Remova repetições acidentais de palavras.')
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -68,7 +77,7 @@ Deno.serve(async request => {
         message: response.status === 429 ? 'O serviço de voz está temporariamente ocupado. Tente novamente em instantes.' : 'Não foi possível transcrever a gravação agora.',
       }, response.status === 429 ? 429 : 502)
     }
-    const text = result?.text?.trim().slice(0, 1000) || ''
+    const text = normalizeTranscript(result?.text?.slice(0, 1000) || '')
     if (!text) return json({ error: 'EMPTY_TRANSCRIPTION', message: 'Não conseguimos identificar fala nessa gravação.' }, 422)
     return json({ text, model })
   } catch (error) {
