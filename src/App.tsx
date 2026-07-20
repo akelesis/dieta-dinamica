@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { AuthScreen } from './components/AuthScreen'
 import { Dashboard } from './components/Dashboard'
@@ -6,6 +7,7 @@ import { Logo } from './components/Logo'
 import { Onboarding } from './components/Onboarding'
 import { NutritionistDashboard } from './components/NutritionistDashboard'
 import { PricingScreen } from './components/PlanExperience'
+import { PwaManager } from './components/PwaManager'
 import { isSubscriptionActive } from './lib/billing'
 import { deletePlanPreferences, deleteUserData, loadUserState, replaceDayLog, upsertPlanPreferences, upsertProfile } from './lib/supabase-data'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -15,6 +17,14 @@ const PROFILE_KEY = 'vivameta:profile'
 const LOGS_KEY = 'vivameta:logs'
 const PLAN_KEY = 'vivameta:plan-preferences'
 const THEME_KEY = 'vivameta:theme'
+const THEME_COLORS: Record<AppTheme, string> = {
+  nature: '#173f35',
+  ocean: '#123f50',
+  terracotta: '#63372d',
+  lavender: '#493663',
+  dark: '#111917',
+  'lilac-night': '#17121f',
+}
 const today = () => new Date().toISOString().slice(0, 10)
 
 function readLocal<T>(key: string): T | null {
@@ -43,6 +53,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     document.documentElement.style.colorScheme = theme === 'dark' || theme === 'lilac-night' ? 'dark' : 'light'
+    document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme])
     localStorage.setItem(THEME_KEY, JSON.stringify(theme))
   }, [theme])
 
@@ -170,23 +181,25 @@ export default function App() {
     await supabase?.auth.signOut()
   }
 
+  const withPwa = (content: ReactNode) => <>{content}<PwaManager /></>
+
   if (!authReady || (session && loadedUserId !== session.user.id)) {
-    return <div className="app-loading"><Logo /><span>Carregando seus dados…</span></div>
+    return withPwa(<div className="app-loading"><Logo /><span>Carregando seus dados…</span></div>)
   }
-  if (isSupabaseConfigured && !session) return <AuthScreen />
-  if (role === 'nutritionist' && session) return <NutritionistDashboard onSignOut={signOut} />
+  if (isSupabaseConfigured && !session) return withPwa(<AuthScreen />)
+  if (role === 'nutritionist' && session) return withPwa(<NutritionistDashboard onSignOut={signOut} />)
   if (!profile) {
-    return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
+    return withPwa(<><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>)
   }
   if (billingEnabled && !isSubscriptionActive(subscription) && !betaPlan) {
-    return <div className="subscription-gate-shell">
+    return withPwa(<div className="subscription-gate-shell">
       <header className="subscription-gate-header"><Logo /><div><span>{session?.user.email}</span>{session && <button className="button secondary" onClick={signOut}>Sair</button>}</div></header>
       <main className="subscription-gate-main"><PricingScreen subscription={subscription} onSubscriptionChange={setSubscription} /></main>
       <footer>O acesso ao VivaMeta é liberado após a confirmação da assinatura.</footer>
-    </div>
+    </div>)
   }
   if (editing) {
-    return <><Onboarding onComplete={saveProfile} initialProfile={profile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
+    return withPwa(<><Onboarding onComplete={saveProfile} initialProfile={profile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>)
   }
-  return <Dashboard profile={profile} log={log} planPreferences={planPreferences} subscription={subscription} betaPlan={betaPlan} onSubscriptionChange={setSubscription} billingEnabled={billingEnabled} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
+  return withPwa(<Dashboard profile={profile} log={log} planPreferences={planPreferences} subscription={subscription} betaPlan={betaPlan} onSubscriptionChange={setSubscription} billingEnabled={billingEnabled} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />)
 }

@@ -188,6 +188,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .button.primary { color: white; background: var(--green); box-shadow: 0 8px 20px rgba(23, 72, 59, .18); }
 .button.primary:hover { background: #103e32; box-shadow: 0 10px 24px rgba(23, 72, 59, .23); }
 .button.ghost { background: transparent; color: var(--muted); }
+
+/* Progressive web app installation and update notices */
+.pwa-prompt, .pwa-update { position: fixed; right: 22px; bottom: 22px; z-index: 120; width: min(440px, calc(100vw - 44px)); display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 13px; align-items: center; padding: 15px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 17px; box-shadow: 0 20px 60px rgba(10, 35, 29, .22); }
+.pwa-prompt-icon, .pwa-update > span { width: 40px; height: 40px; display: grid; place-items: center; color: var(--green); background: var(--mint); border-radius: 12px; }
+.pwa-prompt > div, .pwa-update > div { min-width: 0; }
+.pwa-prompt strong, .pwa-update strong { display: block; font: 800 12px 'Manrope'; }
+.pwa-prompt p, .pwa-update p { display: flex; align-items: center; gap: 4px; margin: 3px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.pwa-prompt .button, .pwa-update .button { min-height: 38px; padding-inline: 14px; font-size: 10px; }
+.pwa-close { align-self: start; }
+
+@media (max-width: 600px) {
+  .pwa-prompt, .pwa-update { right: 12px; bottom: 12px; width: calc(100vw - 24px); grid-template-columns: auto minmax(0, 1fr) auto; padding: 13px; }
+  .pwa-prompt > .button, .pwa-update > .button { grid-column: 2; justify-self: stretch; }
+  .pwa-prompt > .pwa-close, .pwa-update > .icon-button { grid-column: 3; grid-row: 1; }
+}
 .button.secondary { color: var(--green); background: #edf3ed; }
 .button.danger { color: #a63e35; background: #fff0ed; }
 .icon-button { width: 40px; height: 40px; border: 0; border-radius: 11px; background: transparent; display: grid; place-items: center; cursor: pointer; }

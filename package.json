@@ -38,6 +38,7 @@
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
     "supabase": "^2.109.1",
-    "typescript-eslint": "latest"
+    "typescript-eslint": "latest",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }
