@@ -44,6 +44,30 @@ function voiceRecognitionConstructor() {
 
 const nowTime = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
+function mergeVoiceSegments(segments: Array<[number, string]>) {
+  const mergedWords: string[] = []
+  const normalizedWord = (word: string) => word.toLocaleLowerCase('pt-BR').replace(/[^a-z0-9À-ɏ]/gi, '')
+
+  for (const [, transcript] of segments.sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)) {
+    const words = transcript.trim().split(/\s+/).filter(Boolean)
+    if (!words.length) continue
+
+    let overlap = 0
+    const maximumOverlap = Math.min(mergedWords.length, words.length)
+    for (let size = maximumOverlap; size >= 2; size -= 1) {
+      const previous = mergedWords.slice(-size).map(normalizedWord)
+      const current = words.slice(0, size).map(normalizedWord)
+      if (previous.every((word, index) => word === current[index])) {
+        overlap = size
+        break
+      }
+    }
+    mergedWords.push(...words.slice(overlap))
+  }
+
+  return mergedWords.join(' ')
+}
+
 export function AddMealModal({ onClose, onAdd }: Props) {
   const [description, setDescription] = useState('')
   const [time, setTime] = useState(nowTime())
@@ -56,6 +80,8 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [voiceMode, setVoiceMode] = useState<'native' | 'recording' | ''>('')
   const recognitionRef = useRef<VoiceRecognition | null>(null)
+  const voiceBaseDescriptionRef = useRef('')
+  const voiceFinalSegmentsRef = useRef<Map<number, string>>(new Map())
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
   const recordingChunksRef = useRef<Blob[]>([])
@@ -86,6 +112,13 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   function appendTranscript(transcript: string) {
     if (!transcript.trim()) return
     setDescription(current => `${current.trim()}${current.trim() ? ' ' : ''}${transcript.trim()}`)
+    resetEstimate()
+  }
+
+  function replaceNativeTranscript() {
+    const finalTranscript = mergeVoiceSegments([...voiceFinalSegmentsRef.current.entries()])
+    const baseDescription = voiceBaseDescriptionRef.current.trim()
+    setDescription(`${baseDescription}${baseDescription && finalTranscript ? ' ' : ''}${finalTranscript}`)
     resetEstimate()
   }
 
@@ -166,23 +199,29 @@ export function AddMealModal({ onClose, onAdd }: Props) {
 
     setVoiceError('')
     setVoiceInterim('')
+    voiceBaseDescriptionRef.current = description
+    voiceFinalSegmentsRef.current = new Map()
     const recognition = new Recognition()
     recognition.lang = 'pt-BR'
     recognition.continuous = true
     recognition.interimResults = true
     recognition.onstart = () => { setIsListening(true); setVoiceMode('native') }
     recognition.onresult = event => {
-      let finalTranscript = ''
       let interimTranscript = ''
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+      let finalTranscriptChanged = false
+      for (let index = 0; index < event.results.length; index += 1) {
         const transcript = event.results[index][0]?.transcript || ''
-        if (event.results[index].isFinal) finalTranscript += ` ${transcript}`
-        else interimTranscript += ` ${transcript}`
+        if (event.results[index].isFinal) {
+          if (voiceFinalSegmentsRef.current.get(index) !== transcript) {
+            voiceFinalSegmentsRef.current.set(index, transcript)
+            finalTranscriptChanged = true
+          }
+        } else {
+          interimTranscript += ` ${transcript}`
+        }
       }
       setVoiceInterim(interimTranscript.trim())
-      if (finalTranscript.trim()) {
-        appendTranscript(finalTranscript)
-      }
+      if (finalTranscriptChanged) replaceNativeTranscript()
     }
     recognition.onerror = event => {
       const messages: Record<string, string> = {
@@ -199,6 +238,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
       setIsListening(false)
       setVoiceMode('')
       setVoiceInterim('')
+      voiceFinalSegmentsRef.current = new Map()
       recognitionRef.current = null
     }
     recognitionRef.current = recognition
