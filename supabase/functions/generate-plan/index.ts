@@ -4,7 +4,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.5'
 import { z } from 'npm:zod@4.4.3'
 import { accessForUser } from '../_shared/access.ts'
 
-const PROMPT_VERSION = 10
+const PROMPT_VERSION = 11
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -20,6 +20,7 @@ const ProfileInput = z.object({
   height: z.number().min(100).max(250),
   weight: z.number().min(30).max(400),
   sex: z.enum(['female', 'male']),
+  reproductiveStatus: z.enum(['none', 'pregnant_first_trimester', 'pregnant_second_trimester', 'pregnant_third_trimester', 'breastfeeding_0_6_months', 'breastfeeding_7_12_months']).optional().default('none'),
   goal: z.enum(['lose', 'maintain', 'gain']),
   dailyActivity: z.enum(['sedentary', 'light', 'active', 'heavy']),
   workoutsPerWeek: z.number().int().min(0).max(7),
@@ -169,9 +170,11 @@ function nutritionFor(profile: Profile) {
   const goalAdjustments = { lose: -350, maintain: 0, gain: 300 }
   const intensityMet = { light: 3.8, moderate: 5.8, intense: 7.5 }
   const dailyActivityFactors = { sedentary: 1.2, light: 1.25, active: 1.4, heavy: 1.55 }
+  const reproductiveCalorieAdjustments = { none: 0, pregnant_first_trimester: 0, pregnant_second_trimester: 340, pregnant_third_trimester: 450, breastfeeding_0_6_months: 330, breastfeeding_7_12_months: 400 }
   const sexOffset = profile.sex === 'male' ? 5 : -161
   const bmr = Math.round(10 * profile.weight + 6.25 * profile.height - 5 * profile.age + sexOffset)
-  const baseTarget = Math.max(1200, Math.round((bmr * dailyActivityFactors[profile.dailyActivity] + goalAdjustments[profile.goal]) / 10) * 10)
+  const reproductiveCalories = profile.sex === 'female' ? reproductiveCalorieAdjustments[profile.reproductiveStatus] : 0
+  const baseTarget = Math.max(1200, Math.round((bmr * dailyActivityFactors[profile.dailyActivity] + goalAdjustments[profile.goal]) / 10) * 10 + reproductiveCalories)
   const rawBurn = intensityMet[profile.intensity] * profile.weight * (profile.workoutMinutes / 60)
   const workoutCaloriesPerSession = Math.round((rawBurn * .75) / 10) * 10
   const weeklyWorkoutCalories = workoutCaloriesPerSession * profile.workoutsPerWeek
@@ -180,7 +183,7 @@ function nutritionFor(profile: Profile) {
   const protein = Math.round(profile.weight * (profile.goal === 'gain' ? 2 : profile.goal === 'lose' ? 1.8 : 1.6))
   const fat = Math.round(profile.weight * .8)
   const carbs = Math.max(0, Math.round((dailyTarget - protein * 4 - fat * 9) / 4))
-  return { baseTarget, dailyTarget, workoutCaloriesPerSession, weeklyWorkoutCalories, averageWorkoutCalories, protein, carbs, fat }
+  return { baseTarget, dailyTarget, workoutCaloriesPerSession, weeklyWorkoutCalories, averageWorkoutCalories, reproductiveCalories, protein, carbs, fat }
 }
 
 async function hashInput(value: unknown) {
@@ -305,6 +308,7 @@ Deno.serve(async request => {
     objetivo: profile.goal,
     idade: profile.age,
     sexoBiologico: profile.sex,
+    gestacaoOuAmamentacao: profile.reproductiveStatus,
     alturaCm: profile.height,
     pesoKg: profile.weight,
     atividadeCotidiana: profile.dailyActivity,
@@ -315,6 +319,7 @@ Deno.serve(async request => {
     gastoEstimadoPorTreino: nutrition.workoutCaloriesPerSession,
     gastoSemanalEstimadoComTreinos: nutrition.weeklyWorkoutCalories,
     mediaDiariaDosTreinos: nutrition.averageWorkoutCalories,
+    acrescimoCaloricoGestacaoOuAmamentacao: nutrition.reproductiveCalories,
     horarioTreinoUsual: profile.workoutsPerWeek > 0 ? preferences.workoutTime || 'não informado' : 'não se aplica',
     macrosAlvo: { proteinaG: nutrition.protein, carboidratoG: nutrition.carbs, gorduraG: nutrition.fat },
     estiloAlimentar: preferences.dietaryStyle,
@@ -347,6 +352,7 @@ REGRAS OBRIGATÓRIAS:
 - Almoço e jantar devem ser preparações diferentes. Não repita no jantar a mesma combinação de carboidrato, leguminosa e proteína usada no almoço.
 - Respeite integralmente estilo alimentar, restrições e alimentos evitados. Use preferidos quando forem compatíveis.
 - Considere as condições de saúde estruturadas apenas como sinal de cautela educativa; não prescreva tratamento clínico nem invente restrições laboratoriais.
+- Se gestacaoOuAmamentacao não for "none", respeite a fase informada e a meta já ajustada pelo acréscimo energético correspondente. Use escolhas conservadoras de segurança alimentar para gestação ou lactação e sinalize no resumo que a validação do obstetra e do nutricionista continua necessária.
 - Em doença renal, não conclua que todo alimento rico em potássio está proibido nem que está liberado: use uma seleção conservadora, não destaque alegações clínicas e deixe a decisão final para o nutricionista, que receberá as observações do usuário.
 - Priorize alimentos comuns no Brasil e respeite o orçamento e o tempo de preparo.
 - Use horarioTreinoUsual e workoutRelation de refeicoesObrigatorias para organizar o entorno do treino. Na refeição pre_workout, priorize uma fonte de carboidrato de digestão adequada ao intervalo até o treino, com proteína moderada e sem excesso de gordura ou volume. Na refeição post_workout, garanta uma fonte proteica relevante para recuperação e mantenha carboidratos em quantidade compatível com o treino e com a meta diária; não imponha uma redução rígida de carboidratos no pós-treino, pois a reposição de glicogênio também pode ser necessária.
@@ -434,7 +440,7 @@ REGRAS OBRIGATÓRIAS:
     const { data: storedPreferences } = await admin.from('plan_preferences').select('health_notes').eq('user_id', auth.data.user.id).maybeSingle()
     const contextSnapshot = {
       profile: {
-        age: profile.age, sex: profile.sex, height: profile.height, weight: profile.weight,
+        age: profile.age, sex: profile.sex, reproductiveStatus: profile.reproductiveStatus, height: profile.height, weight: profile.weight,
         goal: profile.goal, dailyActivity: profile.dailyActivity, workoutsPerWeek: profile.workoutsPerWeek,
         workoutMinutes: profile.workoutMinutes, intensity: profile.intensity,
       },

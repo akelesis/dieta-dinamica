@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Activity, Armchair, ArrowLeft, ArrowRight, Check, Dumbbell, Footprints, HeartPulse, Leaf, Package, PersonStanding, Ruler, Scale, Sparkles, Target, Timer, UserRound } from 'lucide-react'
-import type { BiologicalSex, DailyActivity, Goal, Intensity, Profile } from '../types'
+import { Activity, Armchair, ArrowLeft, ArrowRight, Baby, Check, Dumbbell, Footprints, HeartPulse, Leaf, Package, PersonStanding, Ruler, Scale, Sparkles, Target, Timer, UserRound } from 'lucide-react'
+import type { BiologicalSex, DailyActivity, Goal, Intensity, Profile, ReproductiveStatus } from '../types'
 import { Logo } from './Logo'
 
-interface Props { onComplete: (profile: Profile) => void; cloudStorage?: boolean; onSignOut?: () => void }
+interface Props { onComplete: (profile: Profile) => void; initialProfile?: Profile; cloudStorage?: boolean; onSignOut?: () => void }
 
 const goals: { id: Goal; title: string; text: string; icon: typeof Target }[] = [
   { id: 'lose', title: 'Perder peso', text: 'Déficit calórico equilibrado', icon: Target },
@@ -18,10 +18,13 @@ const dailyActivities: { id: DailyActivity; title: string; text: string; icon: t
   { id: 'heavy', title: 'Trabalho físico', text: 'Carrego peso ou faço esforço físico frequente.', icon: Package },
 ]
 
-export function Onboarding({ onComplete, cloudStorage = false, onSignOut }: Props) {
+export function Onboarding({ onComplete, initialProfile, cloudStorage = false, onSignOut }: Props) {
   const [step, setStep] = useState(0)
-  const [data, setData] = useState<Profile>({
-    name: '', age: 30, height: 170, weight: 70, sex: 'female', goal: 'lose', dailyActivity: 'sedentary', workoutsPerWeek: 3, workoutMinutes: 50, intensity: 'moderate', theme: 'nature',
+  const [data, setData] = useState<Profile>(() => initialProfile ? {
+    ...initialProfile,
+    reproductiveStatus: initialProfile.sex === 'female' ? initialProfile.reproductiveStatus || 'none' : 'none',
+  } : {
+    name: '', age: 30, height: 170, weight: 70, sex: 'female', reproductiveStatus: 'none', goal: 'lose', dailyActivity: 'sedentary', workoutsPerWeek: 3, workoutMinutes: 50, intensity: 'moderate', theme: 'nature',
   })
   const set = <K extends keyof Profile>(key: K, value: Profile[K]) => setData(prev => ({ ...prev, [key]: value }))
   const canContinue = step !== 0 || data.name.trim().length >= 2
@@ -58,7 +61,8 @@ export function Onboarding({ onComplete, cloudStorage = false, onSignOut }: Prop
               <label className="field"><span>Idade</span><div className="input-with-suffix"><input type="number" min="14" max="100" value={data.age} onChange={event => set('age', Number(event.target.value))} /><b>anos</b></div></label>
               <label className="field"><span>Altura</span><div className="input-with-icon"><Ruler size={19} /><input type="number" min="120" max="230" value={data.height} onChange={event => set('height', Number(event.target.value))} /><b>cm</b></div></label>
               <label className="field"><span>Peso atual</span><div className="input-with-icon"><Scale size={19} /><input type="number" min="35" max="300" step="0.1" value={data.weight} onChange={event => set('weight', Number(event.target.value))} /><b>kg</b></div></label>
-              <label className="field"><span>Sexo biológico <small>(para o cálculo)</small></span><select value={data.sex} onChange={event => set('sex', event.target.value as BiologicalSex)}><option value="female">Feminino</option><option value="male">Masculino</option></select></label>
+              <label className="field"><span>Sexo biológico <small>(para o cálculo)</small></span><select value={data.sex} onChange={event => { const sex = event.target.value as BiologicalSex; setData(current => ({ ...current, sex, reproductiveStatus: sex === 'female' ? current.reproductiveStatus : 'none' })) }}><option value="female">Feminino</option><option value="male">Masculino</option></select></label>
+              {data.sex === 'female' && <label className="field reproductive-status-field"><span><Baby size={16} /> Gestação ou amamentação</span><select value={data.reproductiveStatus} onChange={event => set('reproductiveStatus', event.target.value as ReproductiveStatus)}><option value="none">Não estou gestante nem amamentando</option><option value="pregnant_first_trimester">Gestante · 1º trimestre</option><option value="pregnant_second_trimester">Gestante · 2º trimestre</option><option value="pregnant_third_trimester">Gestante · 3º trimestre</option><option value="breastfeeding_0_6_months">Amamentando · bebê de até 6 meses</option><option value="breastfeeding_7_12_months">Amamentando · bebê de 7 a 12 meses</option></select><small className="reproductive-status-note">Essa informação acrescenta a necessidade energética média da fase. Gestação e amamentação exigem acompanhamento individualizado com obstetra e nutricionista.</small></label>}
             </div>
           </section>
         )}

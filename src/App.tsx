@@ -186,7 +186,7 @@ export default function App() {
     </div>
   }
   if (editing) {
-    return <><Onboarding onComplete={saveProfile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
+    return <><Onboarding onComplete={saveProfile} initialProfile={profile} cloudStorage={Boolean(session)} onSignOut={session ? signOut : undefined} />{syncStatus === 'error' && <div className="sync-toast error">{syncMessage}</div>}</>
   }
   return <Dashboard profile={profile} log={log} planPreferences={planPreferences} subscription={subscription} betaPlan={betaPlan} onSubscriptionChange={setSubscription} billingEnabled={billingEnabled} theme={theme} onThemeChange={saveTheme} onLogChange={saveLog} onPlanComplete={savePlanPreferences} onResetPlan={resetPlanPreferences} onEditProfile={() => setEditing(true)} onReset={reset} onSignOut={session ? signOut : undefined} syncStatus={syncStatus} syncMessage={syncMessage} />
 }

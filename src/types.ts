@@ -1,5 +1,6 @@
 export type Goal = 'lose' | 'maintain' | 'gain'
 export type BiologicalSex = 'female' | 'male'
+export type ReproductiveStatus = 'none' | 'pregnant_first_trimester' | 'pregnant_second_trimester' | 'pregnant_third_trimester' | 'breastfeeding_0_6_months' | 'breastfeeding_7_12_months'
 export type Intensity = 'light' | 'moderate' | 'intense'
 export type DailyActivity = 'sedentary' | 'light' | 'active' | 'heavy'
 export type DietaryStyle = 'omnivore' | 'vegetarian' | 'vegan' | 'pescatarian'
@@ -17,6 +18,7 @@ export interface Profile {
   height: number
   weight: number
   sex: BiologicalSex
+  reproductiveStatus: ReproductiveStatus
   goal: Goal
   dailyActivity: DailyActivity
   workoutsPerWeek: number
@@ -57,6 +59,7 @@ export interface NutritionPlan {
   workoutCaloriesPerSession: number
   weeklyWorkoutCalories: number
   averageWorkoutCalories: number
+  reproductiveCalories: number
   protein: number
   carbs: number
   fat: number

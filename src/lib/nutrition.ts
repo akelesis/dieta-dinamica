@@ -1,14 +1,37 @@
-import type { FoodBreakdown, MealEntry, NutritionPlan, Profile } from '../types'
+import type { FoodBreakdown, MealEntry, NutritionPlan, Profile, ReproductiveStatus } from '../types'
 
 const goalAdjustments = { lose: -350, maintain: 0, gain: 300 }
 const intensityMet = { light: 3.8, moderate: 5.8, intense: 7.5 }
 const dailyActivityFactors = { sedentary: 1.2, light: 1.25, active: 1.4, heavy: 1.55 }
+const reproductiveCalorieAdjustments: Record<ReproductiveStatus, number> = {
+  none: 0,
+  pregnant_first_trimester: 0,
+  pregnant_second_trimester: 340,
+  pregnant_third_trimester: 450,
+  breastfeeding_0_6_months: 330,
+  breastfeeding_7_12_months: 400,
+}
+
+export const reproductiveStatusLabels: Record<ReproductiveStatus, string> = {
+  none: 'Não se aplica',
+  pregnant_first_trimester: 'Gestante · 1º trimestre',
+  pregnant_second_trimester: 'Gestante · 2º trimestre',
+  pregnant_third_trimester: 'Gestante · 3º trimestre',
+  breastfeeding_0_6_months: 'Amamentando · bebê de até 6 meses',
+  breastfeeding_7_12_months: 'Amamentando · bebê de 7 a 12 meses',
+}
+
+export function reproductiveCaloriesFor(profile: Pick<Profile, 'sex' | 'reproductiveStatus'>) {
+  if (profile.sex !== 'female') return 0
+  return reproductiveCalorieAdjustments[profile.reproductiveStatus || 'none']
+}
 
 export function calculatePlan(profile: Profile): NutritionPlan {
   const sexOffset = profile.sex === 'male' ? 5 : -161
   const bmr = Math.round(10 * profile.weight + 6.25 * profile.height - 5 * profile.age + sexOffset)
   const activityFactor = dailyActivityFactors[profile.dailyActivity || 'light']
-  const baseTarget = Math.max(1200, Math.round((bmr * activityFactor + goalAdjustments[profile.goal]) / 10) * 10)
+  const reproductiveCalories = reproductiveCaloriesFor(profile)
+  const baseTarget = Math.max(1200, Math.round((bmr * activityFactor + goalAdjustments[profile.goal]) / 10) * 10 + reproductiveCalories)
   const rawBurn = intensityMet[profile.intensity] * profile.weight * (profile.workoutMinutes / 60)
   const workoutCaloriesPerSession = Math.round((rawBurn * 0.75) / 10) * 10
   const weeklyWorkoutCalories = workoutCaloriesPerSession * profile.workoutsPerWeek
@@ -26,6 +49,7 @@ export function calculatePlan(profile: Profile): NutritionPlan {
     workoutCaloriesPerSession,
     weeklyWorkoutCalories,
     averageWorkoutCalories,
+    reproductiveCalories,
     protein,
     carbs,
     fat,
