@@ -23,6 +23,28 @@ export class FoodEstimateError extends Error {
   }
 }
 
+export async function transcribeMealAudio(audio: Blob): Promise<string> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new FoodEstimateError('SUPABASE_NOT_CONFIGURED', 'O ditado requer conexão com o Supabase.')
+  }
+  const extension = audio.type.includes('ogg') ? 'ogg' : audio.type.includes('mp4') ? 'mp4' : 'webm'
+  const form = new FormData()
+  form.append('audio', audio, `refeicao.${extension}`)
+  const { data, error } = await supabase.functions.invoke('transcribe-meal', { body: form })
+  if (error) {
+    let message = error.message || 'Não foi possível transcrever a gravação.'
+    const response = (error as { context?: Response }).context
+    if (response) {
+      const body = await response.clone().json().catch(() => null) as { message?: string } | null
+      if (body?.message) message = body.message
+    }
+    throw new FoodEstimateError('TRANSCRIPTION_FAILED', message)
+  }
+  const text = typeof data?.text === 'string' ? data.text.trim() : ''
+  if (!text) throw new FoodEstimateError('EMPTY_TRANSCRIPTION', 'Não conseguimos identificar fala nessa gravação.')
+  return text
+}
+
 export async function estimateFoodWithOpenAI(description: string): Promise<AiFoodEstimate> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.functions.invoke('food-estimate', { body: { description } })

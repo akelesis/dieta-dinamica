@@ -397,6 +397,11 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/meal-swaps/deno.json"
 
+[functions.transcribe-meal]
+enabled = true
+verify_jwt = true
+import_map = "./functions/transcribe-meal/deno.json"
+
 [functions.create-checkout-session]
 enabled = true
 verify_jwt = true
