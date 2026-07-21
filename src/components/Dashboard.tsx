@@ -120,6 +120,7 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
   const location = useLocation()
   const navigate = useNavigate()
   const [mealModal, setMealModal] = useState(false)
+  const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null)
   const [mobileMenu, setMobileMenu] = useState(false)
   const plan = useMemo(() => calculatePlan(profile), [profile])
   const reproductiveStatus = profile.reproductiveStatus || 'none'
@@ -136,10 +137,21 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
   const view = routeViews[normalizedPath]
 
   function addMeal(entry: MealEntry) {
-    onLogChange({ ...log, entries: [...log.entries, entry].sort((a, b) => a.time.localeCompare(b.time)) })
+    const alreadyExists = log.entries.some(current => current.id === entry.id)
+    const entries = alreadyExists
+      ? log.entries.map(current => current.id === entry.id ? entry : current)
+      : [...log.entries, entry]
+    onLogChange({ ...log, entries: entries.sort((a, b) => a.time.localeCompare(b.time)) })
     setMealModal(false)
+    setEditingMeal(null)
   }
-  function removeMeal(id: string) { onLogChange({ ...log, entries: log.entries.filter(entry => entry.id !== id) }) }
+  function openNewMeal() { setEditingMeal(null); setMealModal(true) }
+  function openMealEditor(entry: MealEntry) { setEditingMeal(entry); setMealModal(true) }
+  function closeMealModal() { setMealModal(false); setEditingMeal(null) }
+  function removeMeal(entry: MealEntry) {
+    if (!window.confirm(`Excluir a refeição “${entry.description}”?`)) return
+    onLogChange({ ...log, entries: log.entries.filter(current => current.id !== entry.id) })
+  }
   function toggleWorkout() { onLogChange({ ...log, workoutDone: !log.workoutDone }) }
 
   const nav = (destination: View) => { navigate(viewRoutes[destination]); setMobileMenu(false) }
@@ -164,7 +176,7 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
         <header className="mobile-header"><button className="icon-button" aria-label="Abrir menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><Logo /><div className="avatar mini">{firstName.slice(0, 1).toUpperCase()}</div></header>
         {view === 'today' && (
           <>
-            <header className="page-header"><div><span className="date-label"><CalendarDays size={15} /> {dayLabel()}</span><h1>Olá, {firstName}! <span>👋</span></h1><p>Seu dia está começando bem. Acompanhe sua meta abaixo.</p></div><button className="button primary add-meal-top" onClick={() => setMealModal(true)}><Plus size={18} /> Registrar refeição</button></header>
+            <header className="page-header"><div><span className="date-label"><CalendarDays size={15} /> {dayLabel()}</span><h1>Olá, {firstName}! <span>👋</span></h1><p>Seu dia está começando bem. Acompanhe sua meta abaixo.</p></div><button className="button primary add-meal-top" onClick={openNewMeal}><Plus size={18} /> Registrar refeição</button></header>
 
             <section className="overview-grid">
               <article className="card calories-card">
@@ -188,11 +200,11 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
             </section>
 
             <section className="diary-section">
-              <div className="section-heading"><div><span className="section-icon"><UtensilsCrossed size={19} /></span><div><h2>Diário alimentar</h2><p>{log.entries.length ? `${log.entries.length} ${log.entries.length === 1 ? 'registro hoje' : 'registros hoje'}` : 'Seu dia começa por aqui'}</p></div></div><button className="button secondary" onClick={() => setMealModal(true)}><Plus size={17} /> Adicionar</button></div>
+              <div className="section-heading"><div><span className="section-icon"><UtensilsCrossed size={19} /></span><div><h2>Diário alimentar</h2><p>{log.entries.length ? `${log.entries.length} ${log.entries.length === 1 ? 'registro hoje' : 'registros hoje'}` : 'Seu dia começa por aqui'}</p></div></div><button className="button secondary" onClick={openNewMeal}><Plus size={17} /> Adicionar</button></div>
               {log.entries.length === 0 ? (
-                <div className="empty-diary"><span className="empty-illustration"><Leaf size={34} /><i>✦</i></span><h3>Ainda não há refeições registradas</h3><p>Conte o que você comeu e nós estimamos as calorias para você.</p><button className="text-button" onClick={() => setMealModal(true)}>Registrar primeira refeição <ChevronRight size={17} /></button></div>
+                <div className="empty-diary"><span className="empty-illustration"><Leaf size={34} /><i>✦</i></span><h3>Ainda não há refeições registradas</h3><p>Conte o que você comeu e nós estimamos as calorias para você.</p><button className="text-button" onClick={openNewMeal}>Registrar primeira refeição <ChevronRight size={17} /></button></div>
               ) : (
-                <div className="meal-list">{log.entries.map(entry => <article className="meal-row" key={entry.id}><div className="meal-time"><Clock3 size={15} /> {entry.time}</div><span className="meal-symbol">{entry.mealType.includes('Café') ? '☀️' : entry.mealType === 'Almoço' ? '🥗' : entry.mealType === 'Jantar' ? '🍲' : '🍎'}</span><div className="meal-copy"><small>{entry.mealType}</small><strong>{entry.description}</strong>{entry.breakdown.length > 0 && <span>{entry.breakdown.map(item => `${item.quantity} ${item.unit} de ${item.name.toLowerCase()}`).join(' + ')}</span>}</div><b className="meal-calories">{entry.calories} <small>kcal</small></b><button className="delete-meal" aria-label="Excluir refeição" onClick={() => removeMeal(entry.id)}><Trash2 size={17} /></button></article>)}</div>
+                <div className="meal-list">{log.entries.map(entry => <article className="meal-row" key={entry.id}><div className="meal-time"><Clock3 size={15} /> {entry.time}</div><span className="meal-symbol">{entry.mealType.includes('Café') ? '☀️' : entry.mealType === 'Almoço' ? '🥗' : entry.mealType === 'Jantar' ? '🍲' : '🍎'}</span><div className="meal-copy"><small>{entry.mealType}</small><strong>{entry.description}</strong>{entry.breakdown.length > 0 && <span>{entry.breakdown.map(item => `${item.quantity} ${item.unit} de ${item.name.toLowerCase()}`).join(' + ')}</span>}</div><b className="meal-calories">{entry.calories} <small>kcal</small></b><div className="meal-actions"><button className="meal-action edit" type="button" aria-label={`Editar refeição: ${entry.description}`} title="Editar refeição" onClick={() => openMealEditor(entry)}><Pencil size={16} /></button><button className="meal-action delete" type="button" aria-label={`Excluir refeição: ${entry.description}`} title="Excluir refeição" onClick={() => removeMeal(entry)}><Trash2 size={17} /></button></div></article>)}</div>
               )}
             </section>
           </>
@@ -211,9 +223,9 @@ export function Dashboard({ profile, log, planPreferences, subscription, betaPla
           </>
         )}
       </main>
-      {mealModal && <AddMealModal onClose={() => setMealModal(false)} onAdd={addMeal} />}
+      {mealModal && <AddMealModal initialEntry={editingMeal} onClose={closeMealModal} onAdd={addMeal} />}
       {syncStatus !== 'idle' && <div className={`sync-toast ${syncStatus}`}>{syncStatus === 'saving' ? 'Salvando…' : syncMessage || 'Não foi possível sincronizar.'}</div>}
-      {view === 'today' && <button className="mobile-fab" aria-label="Registrar refeição" onClick={() => setMealModal(true)}><Plus size={23} /></button>}
+      {view === 'today' && <button className="mobile-fab" aria-label="Registrar refeição" onClick={openNewMeal}><Plus size={23} /></button>}
     </div>
   )
 }

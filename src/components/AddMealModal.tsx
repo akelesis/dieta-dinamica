@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Clock3, Database, Info, LoaderCircle, Mic, MicOff, Plus, Sparkles, WandSparkles, X } from 'lucide-react'
+import { Check, Clock3, Database, Info, LoaderCircle, Mic, MicOff, Pencil, Plus, Sparkles, WandSparkles, X } from 'lucide-react'
 import { estimateFood, mealTypeForHour } from '../lib/nutrition'
 import { estimateFoodWithOpenAI, transcribeMealAudio } from '../lib/openai'
 import type { MealEntry } from '../types'
 
-interface Props { onClose: () => void; onAdd: (entry: MealEntry) => void }
+interface Props { onClose: () => void; onAdd: (entry: MealEntry) => void; initialEntry?: MealEntry | null }
 
 interface VoiceRecognitionResult {
   isFinal: boolean
@@ -83,10 +83,11 @@ function mergeVoiceSegments(segments: Array<[number, string]>) {
   return normalizeVoiceTranscript(mergedWords.join(' '))
 }
 
-export function AddMealModal({ onClose, onAdd }: Props) {
-  const [description, setDescription] = useState('')
-  const [time, setTime] = useState(nowTime())
+export function AddMealModal({ onClose, onAdd, initialEntry = null }: Props) {
+  const [description, setDescription] = useState(initialEntry?.description || '')
+  const [time, setTime] = useState(initialEntry?.time || nowTime())
   const [aiEstimate, setAiEstimate] = useState<Awaited<ReturnType<typeof estimateFoodWithOpenAI>> | null>(null)
+  const [savedBreakdown, setSavedBreakdown] = useState<MealEntry['breakdown'] | null>(initialEntry?.breakdown || null)
   const [aiError, setAiError] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -108,9 +109,9 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   const discardRecordingRef = useRef(false)
   const voiceSupported = useMemo(() => Boolean(voiceRecognitionConstructor()) || (typeof MediaRecorder !== 'undefined' && typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)), [])
   const localBreakdown = useMemo(() => estimateFood(description), [description])
-  const breakdown = aiEstimate?.items || localBreakdown
+  const breakdown = aiEstimate?.items || savedBreakdown || localBreakdown
   const estimated = aiEstimate?.totalCalories ?? breakdown.reduce((sum, item) => sum + item.calories, 0)
-  const [manualCalories, setManualCalories] = useState<number | ''>('')
+  const [manualCalories, setManualCalories] = useState<number | ''>(initialEntry?.calories || '')
   const calories = manualCalories === '' ? estimated : Number(manualCalories)
   const canSave = description.trim().length > 2 && calories > 0
 
@@ -128,6 +129,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   function resetEstimate() {
     setManualCalories('')
     setAiEstimate(null)
+    setSavedBreakdown(null)
     setAiError('')
   }
 
@@ -339,7 +341,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
       carbs: item.carbs === undefined ? undefined : Math.round(item.carbs * macroScale * 10) / 10,
       fat: item.fat === undefined ? undefined : Math.round(item.fat * macroScale * 10) / 10,
     }))
-    onAdd({ id: crypto.randomUUID(), time, description: description.trim(), calories, mealType: mealTypeForHour(time), breakdown: savedBreakdown })
+    onAdd({ id: initialEntry?.id || crypto.randomUUID(), time, description: description.trim(), calories, mealType: mealTypeForHour(time), breakdown: savedBreakdown })
   }
 
   async function analyzeWithAi() {
@@ -349,6 +351,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
     try {
       const result = await estimateFoodWithOpenAI(description.trim())
       setAiEstimate(result)
+      setSavedBreakdown(null)
       setManualCalories('')
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'Não foi possível analisar a refeição.')
@@ -360,7 +363,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   return (
     <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
       <section className="modal" role="dialog" aria-modal="true" aria-labelledby="meal-title">
-        <header className="modal-header"><div><span className="modal-icon"><Plus size={21} /></span><div><small>Novo registro</small><h2 id="meal-title">O que você comeu?</h2></div></div><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={20} /></button></header>
+        <header className="modal-header"><div><span className="modal-icon">{initialEntry ? <Pencil size={20} /> : <Plus size={21} />}</span><div><small>{initialEntry ? 'Editar registro' : 'Novo registro'}</small><h2 id="meal-title">{initialEntry ? 'Editar refeição' : 'O que você comeu?'}</h2></div></div><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={20} /></button></header>
         <div className="modal-body">
           <label className="field">
             <span>Descreva sua refeição</span>
@@ -389,7 +392,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
           <label className="field calorie-override"><span>Calorias {estimated > 0 ? <small>(você pode corrigir)</small> : ''}</span><div className="input-with-suffix"><input type="number" min="1" placeholder={estimated ? String(estimated) : 'Ex.: 230'} value={manualCalories} onChange={event => setManualCalories(event.target.value === '' ? '' : Number(event.target.value))} /><b>kcal</b></div></label>
           <div className="modal-note"><Info size={15} /> A estimativa pode variar conforme receita, marca e tamanho da porção.</div>
         </div>
-        <footer className="modal-actions"><button className="button ghost" onClick={onClose}>Cancelar</button><button className="button primary" disabled={!canSave} onClick={save}>Adicionar ao diário <Plus size={18} /></button></footer>
+        <footer className="modal-actions"><button className="button ghost" onClick={onClose}>Cancelar</button><button className="button primary" disabled={!canSave} onClick={save}>{initialEntry ? 'Salvar alterações' : 'Adicionar ao diário'} {initialEntry ? <Check size={18} /> : <Plus size={18} />}</button></footer>
       </section>
     </div>
   )
