@@ -43,6 +43,9 @@ function voiceRecognitionConstructor() {
 }
 
 const nowTime = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+const NATIVE_LISTENING_LIMIT_MS = 120_000
+const RECORDED_LISTENING_LIMIT_MS = 90_000
+const RECOGNITION_RESTART_DELAY_MS = 150
 
 const normalizedVoiceWord = (word: string) => word.toLocaleLowerCase('pt-BR').replace(/[^a-z0-9À-ɏ]/gi, '')
 
@@ -92,7 +95,11 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [voiceMode, setVoiceMode] = useState<'native' | 'recording' | ''>('')
   const recognitionRef = useRef<VoiceRecognition | null>(null)
+  const recognitionShouldContinueRef = useRef(false)
+  const recognitionRestartTimeoutRef = useRef<number | null>(null)
+  const recognitionSessionTimeoutRef = useRef<number | null>(null)
   const voiceBaseDescriptionRef = useRef('')
+  const voiceCommittedTranscriptRef = useRef('')
   const voiceFinalSegmentsRef = useRef<Map<number, string>>(new Map())
   const recorderRef = useRef<MediaRecorder | null>(null)
   const recordingStreamRef = useRef<MediaStream | null>(null)
@@ -108,6 +115,9 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   const canSave = description.trim().length > 2 && calories > 0
 
   useEffect(() => () => {
+    recognitionShouldContinueRef.current = false
+    if (recognitionRestartTimeoutRef.current) window.clearTimeout(recognitionRestartTimeoutRef.current)
+    if (recognitionSessionTimeoutRef.current) window.clearTimeout(recognitionSessionTimeoutRef.current)
     recognitionRef.current?.abort()
     discardRecordingRef.current = true
     if (recordingTimeoutRef.current) window.clearTimeout(recordingTimeoutRef.current)
@@ -129,10 +139,37 @@ export function AddMealModal({ onClose, onAdd }: Props) {
   }
 
   function replaceNativeTranscript() {
-    const finalTranscript = mergeVoiceSegments([...voiceFinalSegmentsRef.current.entries()])
+    const currentTranscript = mergeVoiceSegments([...voiceFinalSegmentsRef.current.entries()])
+    const finalTranscript = mergeVoiceSegments([
+      [0, voiceCommittedTranscriptRef.current],
+      [1, currentTranscript],
+    ])
     const baseDescription = voiceBaseDescriptionRef.current.trim()
     setDescription(`${baseDescription}${baseDescription && finalTranscript ? ' ' : ''}${finalTranscript}`)
     resetEstimate()
+  }
+
+  function commitNativeTranscript() {
+    const currentTranscript = mergeVoiceSegments([...voiceFinalSegmentsRef.current.entries()])
+    voiceCommittedTranscriptRef.current = mergeVoiceSegments([
+      [0, voiceCommittedTranscriptRef.current],
+      [1, currentTranscript],
+    ])
+    voiceFinalSegmentsRef.current = new Map()
+    replaceNativeTranscript()
+  }
+
+  function finishNativeVoiceInput() {
+    if (recognitionRestartTimeoutRef.current) window.clearTimeout(recognitionRestartTimeoutRef.current)
+    if (recognitionSessionTimeoutRef.current) window.clearTimeout(recognitionSessionTimeoutRef.current)
+    recognitionRestartTimeoutRef.current = null
+    recognitionSessionTimeoutRef.current = null
+    recognitionShouldContinueRef.current = false
+    commitNativeTranscript()
+    setIsListening(false)
+    setVoiceMode('')
+    setVoiceInterim('')
+    recognitionRef.current = null
   }
 
   function stopRecordingTracks() {
@@ -190,7 +227,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
       setVoiceMode('recording')
       recordingTimeoutRef.current = window.setTimeout(() => {
         if (recorder.state === 'recording') recorder.stop()
-      }, 45_000)
+      }, RECORDED_LISTENING_LIMIT_MS)
     } catch (error) {
       const name = error instanceof DOMException ? error.name : ''
       setVoiceError(name === 'NotAllowedError' ? 'Permita o uso do microfone no navegador para registrar por voz.' : 'Não foi possível acessar o microfone.')
@@ -200,7 +237,13 @@ export function AddMealModal({ onClose, onAdd }: Props) {
 
   function toggleVoiceInput() {
     if (isListening) {
-      if (recognitionRef.current) recognitionRef.current.stop()
+      if (recognitionRef.current) {
+        recognitionShouldContinueRef.current = false
+        if (recognitionRestartTimeoutRef.current) window.clearTimeout(recognitionRestartTimeoutRef.current)
+        recognitionRestartTimeoutRef.current = null
+        try { recognitionRef.current.stop() }
+        catch { finishNativeVoiceInput() }
+      }
       else if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
       return
     }
@@ -213,7 +256,9 @@ export function AddMealModal({ onClose, onAdd }: Props) {
     setVoiceError('')
     setVoiceInterim('')
     voiceBaseDescriptionRef.current = description
+    voiceCommittedTranscriptRef.current = ''
     voiceFinalSegmentsRef.current = new Map()
+    recognitionShouldContinueRef.current = true
     const recognition = new Recognition()
     recognition.lang = 'pt-BR'
     recognition.continuous = true
@@ -245,18 +290,44 @@ export function AddMealModal({ onClose, onAdd }: Props) {
         network: 'O serviço de voz ficou indisponível. Verifique sua conexão e tente novamente.',
         'language-not-supported': 'O reconhecimento em português não está disponível neste navegador.',
       }
-      if (event.error !== 'aborted') setVoiceError(messages[event.error] || 'Não foi possível transcrever sua fala agora.')
+      if (event.error === 'aborted') return
+      if (event.error === 'no-speech' && recognitionShouldContinueRef.current) {
+        setVoiceError('')
+        return
+      }
+      recognitionShouldContinueRef.current = false
+      setVoiceError(messages[event.error] || 'Não foi possível transcrever sua fala agora.')
     }
     recognition.onend = () => {
-      setIsListening(false)
-      setVoiceMode('')
+      commitNativeTranscript()
       setVoiceInterim('')
-      voiceFinalSegmentsRef.current = new Map()
-      recognitionRef.current = null
+      if (recognitionShouldContinueRef.current) {
+        recognitionRestartTimeoutRef.current = window.setTimeout(() => {
+          recognitionRestartTimeoutRef.current = null
+          if (!recognitionShouldContinueRef.current) return
+          try { recognition.start() }
+          catch {
+            setVoiceError('Não foi possível manter o microfone ativo. Toque em Ditar para continuar.')
+            finishNativeVoiceInput()
+          }
+        }, RECOGNITION_RESTART_DELAY_MS)
+        return
+      }
+      finishNativeVoiceInput()
     }
     recognitionRef.current = recognition
-    try { recognition.start() }
-    catch { setVoiceError('Não foi possível iniciar o microfone. Tente novamente.'); recognitionRef.current = null }
+    try {
+      recognition.start()
+      recognitionSessionTimeoutRef.current = window.setTimeout(() => {
+        recognitionShouldContinueRef.current = false
+        try { recognition.stop() } catch { finishNativeVoiceInput() }
+      }, NATIVE_LISTENING_LIMIT_MS)
+    }
+    catch {
+      recognitionShouldContinueRef.current = false
+      setVoiceError('Não foi possível iniciar o microfone. Tente novamente.')
+      recognitionRef.current = null
+    }
   }
 
   function save() {
@@ -296,7 +367,7 @@ export function AddMealModal({ onClose, onAdd }: Props) {
             <textarea autoFocus rows={4} placeholder="Ex.: comi 3 uvas encapadas e tomei um café sem açúcar" value={description} onChange={event => { setDescription(event.target.value); resetEstimate(); setVoiceError('') }} />
             {voiceInterim && <div className="voice-interim" aria-live="polite"><span className="voice-pulse" /> {voiceInterim}</div>}
             <div className="meal-assist-row"><small className="field-hint"><Sparkles size={13} /> Inclua quantidades sempre que puder.</small><div className="meal-assist-actions"><button type="button" className={`voice-input-button ${isListening ? 'listening' : ''}`} aria-pressed={isListening} disabled={isTranscribing} title={voiceSupported ? 'Descrever refeição por voz' : 'Ditado indisponível neste navegador'} onClick={toggleVoiceInput}>{isTranscribing ? <LoaderCircle className="spin" size={15} /> : isListening ? <MicOff size={15} /> : <Mic size={15} />}{isTranscribing ? 'Transcrevendo…' : isListening ? 'Parar' : 'Ditar'}</button><button type="button" className="ai-estimate-button" disabled={description.trim().length < 3 || isAnalyzing || isTranscribing} onClick={analyzeWithAi}>{isAnalyzing ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{isAnalyzing ? 'Calculando...' : 'Calcular refeição'}</button></div></div>
-            {isListening && <small className="voice-status" role="status"><span className="voice-pulse" /> {voiceMode === 'native' ? 'Ouvindo em português… fale os alimentos e as quantidades.' : 'Gravando… fale os alimentos e as quantidades. Limite de 45 segundos.'}</small>}
+            {isListening && <small className="voice-status" role="status"><span className="voice-pulse" /> {voiceMode === 'native' ? 'Ouvindo em português… faça pausas normalmente e toque em Parar quando terminar. Limite de 2 minutos.' : 'Gravando… fale os alimentos e as quantidades. Limite de 90 segundos.'}</small>}
             {isTranscribing && <small className="voice-status" role="status"><LoaderCircle className="spin" size={13} /> Convertendo sua gravação em texto…</small>}
             {voiceError && <small className="voice-error" role="alert"><Info size={13} /> {voiceError}</small>}
             {voiceSupported && <small className="voice-privacy">Em navegadores sem ditado nativo, o áudio é enviado à OpenAI somente para transcrição e não é armazenado pelo VivaMeta.</small>}
