@@ -197,11 +197,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .pwa-prompt p, .pwa-update p { display: flex; align-items: center; gap: 4px; margin: 3px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
 .pwa-prompt .button, .pwa-update .button { min-height: 38px; padding-inline: 14px; font-size: 10px; }
 .pwa-close { align-self: start; }
+body:has(.sync-toast) :is(.pwa-prompt, .pwa-update) { bottom: 84px; }
+body:has(.modal-backdrop) :is(.pwa-prompt, .pwa-update, .sync-toast) { display: none; }
 
 @media (max-width: 600px) {
   .pwa-prompt, .pwa-update { right: 12px; bottom: 12px; width: calc(100vw - 24px); grid-template-columns: auto minmax(0, 1fr) auto; padding: 13px; }
   .pwa-prompt > .button, .pwa-update > .button { grid-column: 2; justify-self: stretch; }
   .pwa-prompt > .pwa-close, .pwa-update > .icon-button { grid-column: 3; grid-row: 1; }
+  body:has(.mobile-fab) :is(.pwa-prompt, .pwa-update, .sync-toast) { right: 12px; bottom: 88px; max-width: calc(100vw - 24px); }
+  body:has(.mobile-fab):has(.sync-toast) :is(.pwa-prompt, .pwa-update) { bottom: 164px; }
 }
 .button.secondary { color: var(--green); background: #edf3ed; }
 .button.danger { color: #a63e35; background: #fff0ed; }

@@ -71,7 +71,8 @@ export function PwaManager() {
     setNeedRefresh(false)
   }
 
-  const showInstall = !installed && !dismissed && (Boolean(installPrompt) || ios)
+  const showServiceNotice = offlineReady || needRefresh
+  const showInstall = !showServiceNotice && !installed && !dismissed && (Boolean(installPrompt) || ios)
 
   return <>
     {showInstall && <aside className="pwa-prompt" role="status" aria-live="polite">
@@ -84,7 +85,7 @@ export function PwaManager() {
       <button type="button" className="icon-button pwa-close" aria-label="Agora não" onClick={dismissInstall}><X size={18} /></button>
     </aside>}
 
-    {(offlineReady || needRefresh) && <aside className="pwa-update" role="status" aria-live="polite">
+    {showServiceNotice && <aside className="pwa-update" role="status" aria-live="polite">
       <span>{needRefresh ? <RefreshCw size={18} /> : <Check size={18} />}</span>
       <div><strong>{needRefresh ? 'Nova versão disponível' : 'VivaMeta pronto para uso offline'}</strong><p>{needRefresh ? 'Atualize quando terminar o que está fazendo.' : 'As telas já abertas poderão ser acessadas em conexões instáveis.'}</p></div>
       {needRefresh && <button type="button" className="button primary" onClick={() => updateServiceWorker(true)}>Atualizar</button>}
