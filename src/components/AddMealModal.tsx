@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Clock3, Database, Info, LoaderCircle, Mic, MicOff, Pencil, Plus, Sparkles, WandSparkles, X } from 'lucide-react'
+import { Camera, Check, Clock3, Database, ImagePlus, Info, LoaderCircle, Mic, MicOff, Pencil, Plus, Sparkles, Trash2, WandSparkles, X } from 'lucide-react'
 import { estimateFood, mealTypeForHour } from '../lib/nutrition'
-import { estimateFoodWithOpenAI, transcribeMealAudio } from '../lib/openai'
-import type { MealEntry } from '../types'
+import { analyzeMealImage, estimateFoodWithOpenAI, transcribeMealAudio } from '../lib/openai'
+import { formatDetectedMealDescription, prepareMealImage } from '../lib/meal-image'
+import type { DetectedMealItem, MealEntry, MealImageAnalysis } from '../types'
 
 interface Props { onClose: () => void; onAdd: (entry: MealEntry) => void; initialEntry?: MealEntry | null }
 
@@ -95,6 +96,11 @@ export function AddMealModal({ onClose, onAdd, initialEntry = null }: Props) {
   const [voiceError, setVoiceError] = useState('')
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [voiceMode, setVoiceMode] = useState<'native' | 'recording' | ''>('')
+  const [photoAnalysis, setPhotoAnalysis] = useState<MealImageAnalysis | null>(null)
+  const [photoItems, setPhotoItems] = useState<DetectedMealItem[]>([])
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState('')
+  const [photoError, setPhotoError] = useState('')
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false)
   const recognitionRef = useRef<VoiceRecognition | null>(null)
   const recognitionShouldContinueRef = useRef(false)
   const recognitionRestartTimeoutRef = useRef<number | null>(null)
@@ -107,6 +113,7 @@ export function AddMealModal({ onClose, onAdd, initialEntry = null }: Props) {
   const recordingChunksRef = useRef<Blob[]>([])
   const recordingTimeoutRef = useRef<number | null>(null)
   const discardRecordingRef = useRef(false)
+  const photoInputRef = useRef<HTMLInputElement | null>(null)
   const voiceSupported = useMemo(() => Boolean(voiceRecognitionConstructor()) || (typeof MediaRecorder !== 'undefined' && typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)), [])
   const localBreakdown = useMemo(() => estimateFood(description), [description])
   const breakdown = aiEstimate?.items || savedBreakdown || localBreakdown
@@ -125,6 +132,10 @@ export function AddMealModal({ onClose, onAdd, initialEntry = null }: Props) {
     if (recorderRef.current?.state !== 'inactive') recorderRef.current?.stop()
     recordingStreamRef.current?.getTracks().forEach(track => track.stop())
   }, [])
+
+  useEffect(() => () => {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl)
+  }, [photoPreviewUrl])
 
   function resetEstimate() {
     setManualCalories('')
@@ -344,20 +355,75 @@ export function AddMealModal({ onClose, onAdd, initialEntry = null }: Props) {
     onAdd({ id: initialEntry?.id || crypto.randomUUID(), time, description: description.trim(), calories, mealType: mealTypeForHour(time), breakdown: savedBreakdown })
   }
 
-  async function analyzeWithAi() {
-    if (description.trim().length < 3 || isAnalyzing) return
+  async function calculateEstimate(value: string) {
+    const normalizedDescription = value.trim()
+    if (normalizedDescription.length < 3 || isAnalyzing) return false
     setIsAnalyzing(true)
     setAiError('')
     try {
-      const result = await estimateFoodWithOpenAI(description.trim())
+      const result = await estimateFoodWithOpenAI(normalizedDescription)
       setAiEstimate(result)
       setSavedBreakdown(null)
       setManualCalories('')
+      return true
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'Não foi possível analisar a refeição.')
+      return false
     } finally {
       setIsAnalyzing(false)
     }
+  }
+
+  function analyzeWithAi() {
+    void calculateEstimate(description)
+  }
+
+  async function handlePhotoSelected(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || isAnalyzingPhoto) return
+    setPhotoError('')
+    setPhotoAnalysis(null)
+    setPhotoItems([])
+    setPhotoPreviewUrl('')
+    setIsAnalyzingPhoto(true)
+    try {
+      const preparedImage = await prepareMealImage(file)
+      setPhotoPreviewUrl(URL.createObjectURL(preparedImage))
+      const result = await analyzeMealImage(preparedImage)
+      setPhotoAnalysis(result)
+      setPhotoItems(result.items)
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : 'Não foi possível analisar a foto.')
+    } finally {
+      setIsAnalyzingPhoto(false)
+    }
+  }
+
+  function updatePhotoItem(index: number, patch: Partial<DetectedMealItem>) {
+    setPhotoItems(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item))
+    resetEstimate()
+  }
+
+  function removePhotoItem(index: number) {
+    setPhotoItems(items => items.filter((_, itemIndex) => itemIndex !== index))
+    resetEstimate()
+  }
+
+  function addPhotoItem() {
+    setPhotoItems(items => [...items, { name: '', quantity: 100, unit: 'g', confidence: 'low' }])
+    resetEstimate()
+  }
+
+  async function confirmPhotoItems() {
+    const detectedDescription = formatDetectedMealDescription(photoItems)
+    if (detectedDescription.length < 3) {
+      setPhotoError('Revise os alimentos detectados antes de calcular.')
+      return
+    }
+    setDescription(detectedDescription)
+    setPhotoError('')
+    await calculateEstimate(detectedDescription)
   }
 
   return (
@@ -365,16 +431,56 @@ export function AddMealModal({ onClose, onAdd, initialEntry = null }: Props) {
       <section className="modal" role="dialog" aria-modal="true" aria-labelledby="meal-title">
         <header className="modal-header"><div><span className="modal-icon">{initialEntry ? <Pencil size={20} /> : <Plus size={21} />}</span><div><small>{initialEntry ? 'Editar registro' : 'Novo registro'}</small><h2 id="meal-title">{initialEntry ? 'Editar refeição' : 'O que você comeu?'}</h2></div></div><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={20} /></button></header>
         <div className="modal-body">
-          <label className="field">
-            <span>Descreva sua refeição</span>
-            <textarea autoFocus rows={4} placeholder="Ex.: comi 3 uvas encapadas e tomei um café sem açúcar" value={description} onChange={event => { setDescription(event.target.value); resetEstimate(); setVoiceError('') }} />
+          <div className="field meal-description-field">
+            <label htmlFor="meal-description">Descreva sua refeição</label>
+            <textarea id="meal-description" autoFocus rows={4} placeholder="Ex.: comi 3 uvas encapadas e tomei um café sem açúcar" value={description} onChange={event => { setDescription(event.target.value); resetEstimate(); setVoiceError('') }} />
             {voiceInterim && <div className="voice-interim" aria-live="polite"><span className="voice-pulse" /> {voiceInterim}</div>}
-            <div className="meal-assist-row"><small className="field-hint"><Sparkles size={13} /> Inclua quantidades sempre que puder.</small><div className="meal-assist-actions"><button type="button" className={`voice-input-button ${isListening ? 'listening' : ''}`} aria-pressed={isListening} disabled={isTranscribing} title={voiceSupported ? 'Descrever refeição por voz' : 'Ditado indisponível neste navegador'} onClick={toggleVoiceInput}>{isTranscribing ? <LoaderCircle className="spin" size={15} /> : isListening ? <MicOff size={15} /> : <Mic size={15} />}{isTranscribing ? 'Transcrevendo…' : isListening ? 'Parar' : 'Ditar'}</button><button type="button" className="ai-estimate-button" disabled={description.trim().length < 3 || isAnalyzing || isTranscribing} onClick={analyzeWithAi}>{isAnalyzing ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{isAnalyzing ? 'Calculando...' : 'Calcular refeição'}</button></div></div>
+            <input ref={photoInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handlePhotoSelected} />
+            <div className="meal-assist-row"><small className="field-hint"><Sparkles size={13} /> Inclua quantidades sempre que puder.</small><div className="meal-assist-actions"><button type="button" className="photo-input-button" disabled={isAnalyzingPhoto || isListening || isTranscribing} onClick={() => photoInputRef.current?.click()}>{isAnalyzingPhoto ? <LoaderCircle className="spin" size={15} /> : <Camera size={15} />}{isAnalyzingPhoto ? 'Analisando…' : 'Foto'}</button><button type="button" className={`voice-input-button ${isListening ? 'listening' : ''}`} aria-pressed={isListening} disabled={isTranscribing || isAnalyzingPhoto} title={voiceSupported ? 'Descrever refeição por voz' : 'Ditado indisponível neste navegador'} onClick={toggleVoiceInput}>{isTranscribing ? <LoaderCircle className="spin" size={15} /> : isListening ? <MicOff size={15} /> : <Mic size={15} />}{isTranscribing ? 'Transcrevendo…' : isListening ? 'Parar' : 'Ditar'}</button><button type="button" className="ai-estimate-button" disabled={description.trim().length < 3 || isAnalyzing || isTranscribing || isAnalyzingPhoto} onClick={analyzeWithAi}>{isAnalyzing ? <LoaderCircle className="spin" size={15} /> : <WandSparkles size={15} />}{isAnalyzing ? 'Calculando...' : 'Calcular refeição'}</button></div></div>
             {isListening && <small className="voice-status" role="status"><span className="voice-pulse" /> {voiceMode === 'native' ? 'Ouvindo em português… faça pausas normalmente e toque em Parar quando terminar. Limite de 2 minutos.' : 'Gravando… fale os alimentos e as quantidades. Limite de 90 segundos.'}</small>}
             {isTranscribing && <small className="voice-status" role="status"><LoaderCircle className="spin" size={13} /> Convertendo sua gravação em texto…</small>}
             {voiceError && <small className="voice-error" role="alert"><Info size={13} /> {voiceError}</small>}
-            {voiceSupported && <small className="voice-privacy">Em navegadores sem ditado nativo, o áudio é enviado à OpenAI somente para transcrição e não é armazenado pelo VivaMeta.</small>}
-          </label>
+            {(voiceSupported || photoPreviewUrl) && <small className="voice-privacy">Áudio e fotos são enviados à OpenAI somente para análise e não são armazenados pelo VivaMeta.</small>}
+          </div>
+
+          {(photoPreviewUrl || isAnalyzingPhoto) && (
+            <section className="photo-analysis-card" aria-labelledby="photo-analysis-title">
+              <div className="photo-analysis-header">
+                <div className="photo-preview">
+                  {photoPreviewUrl ? <img src={photoPreviewUrl} alt="Foto selecionada da refeição" /> : <ImagePlus size={24} />}
+                  {isAnalyzingPhoto && <span className="photo-loading"><LoaderCircle className="spin" size={23} /></span>}
+                </div>
+                <div>
+                  <small>Análise da foto</small>
+                  <strong id="photo-analysis-title">{isAnalyzingPhoto ? 'Identificando os alimentos…' : 'Revise antes de calcular'}</strong>
+                  <span>{isAnalyzingPhoto ? 'Isso pode levar alguns segundos.' : 'Corrija nomes e porções que não estejam certos.'}</span>
+                </div>
+                {!isAnalyzingPhoto && <button type="button" className="icon-button" aria-label="Escolher outra foto" title="Escolher outra foto" onClick={() => photoInputRef.current?.click()}><Camera size={17} /></button>}
+              </div>
+
+              {!isAnalyzingPhoto && photoItems.length > 0 && (
+                <>
+                  <div className="photo-detected-items">
+                    {photoItems.map((item, index) => (
+                      <div className="photo-detected-row" key={index}>
+                        <input aria-label={`Alimento ${index + 1}`} value={item.name} placeholder="Alimento" onChange={event => updatePhotoItem(index, { name: event.target.value })} />
+                        <input aria-label={`Quantidade do alimento ${index + 1}`} type="number" min="0.01" step="0.01" value={item.quantity} onChange={event => updatePhotoItem(index, { quantity: Number(event.target.value) })} />
+                        <input aria-label={`Unidade do alimento ${index + 1}`} value={item.unit} placeholder="g" onChange={event => updatePhotoItem(index, { unit: event.target.value })} />
+                        <button type="button" className="meal-action delete" aria-label={`Remover ${item.name || `alimento ${index + 1}`}`} onClick={() => removePhotoItem(index)}><Trash2 size={15} /></button>
+                      </div>
+                    ))}
+                  </div>
+                  {(photoAnalysis?.note || photoAnalysis?.question) && <div className="photo-analysis-note"><Info size={14} /><span>{[photoAnalysis.note, photoAnalysis.question].filter(Boolean).join(' ')}</span></div>}
+                  <div className="photo-analysis-actions">
+                    <button type="button" className="button ghost compact" onClick={addPhotoItem}><Plus size={15} /> Adicionar item</button>
+                    <button type="button" className="button primary compact" disabled={isAnalyzing || !formatDetectedMealDescription(photoItems)} onClick={confirmPhotoItems}>{isAnalyzing ? <LoaderCircle className="spin" size={15} /> : <Check size={15} />}{isAnalyzing ? 'Calculando…' : 'Confirmar e calcular'}</button>
+                  </div>
+                </>
+              )}
+              {photoError && <div className="photo-analysis-error" role="alert"><Info size={14} /> {photoError}</div>}
+            </section>
+          )}
+          {photoError && !photoPreviewUrl && <div className="ai-error"><Info size={16} /><span>{photoError} Você ainda pode descrever a refeição por texto ou voz.</span></div>}
           <label className="field time-field"><span>Horário</span><div className="input-with-icon"><Clock3 size={18} /><input type="time" value={time} onChange={event => setTime(event.target.value)} /></div></label>
 
           {aiError && <div className="ai-error"><Info size={16} /><span>{aiError} Você ainda pode informar as calorias manualmente.</span></div>}

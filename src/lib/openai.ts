@@ -1,4 +1,4 @@
-import type { FoodBreakdown } from '../types'
+import type { FoodBreakdown, MealImageAnalysis } from '../types'
 import { isSupabaseConfigured, supabase } from './supabase'
 
 export interface AiFoodEstimate {
@@ -43,6 +43,25 @@ export async function transcribeMealAudio(audio: Blob): Promise<string> {
   const text = typeof data?.text === 'string' ? data.text.trim() : ''
   if (!text) throw new FoodEstimateError('EMPTY_TRANSCRIPTION', 'Não conseguimos identificar fala nessa gravação.')
   return text
+}
+
+export async function analyzeMealImage(image: Blob): Promise<MealImageAnalysis> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new FoodEstimateError('SUPABASE_NOT_CONFIGURED', 'A análise de fotos requer conexão com o Supabase.')
+  }
+  const form = new FormData()
+  form.append('image', image, 'refeicao.jpg')
+  const { data, error } = await supabase.functions.invoke('analyze-meal-image', { body: form })
+  if (error) {
+    let message = error.message || 'Não foi possível analisar a foto da refeição.'
+    const response = (error as { context?: Response }).context
+    if (response) {
+      const body = await response.clone().json().catch(() => null) as { message?: string } | null
+      if (body?.message) message = body.message
+    }
+    throw new FoodEstimateError('IMAGE_ANALYSIS_FAILED', message)
+  }
+  return data as MealImageAnalysis
 }
 
 export async function estimateFoodWithOpenAI(description: string): Promise<AiFoodEstimate> {

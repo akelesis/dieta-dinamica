@@ -5,6 +5,7 @@ O projeto está preparado para usar o Supabase como backend principal:
 - Supabase Auth para cadastro, login e sessão;
 - Postgres com RLS para perfil, preferências do plano, diário e refeições;
 - Edge Function `food-estimate` para estimar alimentos sem expor a chave;
+- Edge Function `analyze-meal-image` para identificar alimentos e porções visíveis em fotos sem armazenar a imagem;
 - Edge Function `generate-plan` para criar o rascunho de planos com pratos, porções e macros estruturados;
 - fila privada e anonimizada para revisão das dietas do Plano Plus;
 - Edge Function `nutritionist-reviews` para edição profissional, aprovação e geração posterior do modo de preparo;
@@ -19,8 +20,9 @@ Crie um projeto no painel do Supabase e execute, na raiz deste repositório:
 npx supabase login
 npx supabase link --project-ref SEU_PROJECT_REF
 npx supabase db push
-npx supabase secrets set OPENAI_API_KEY="SUA_CHAVE_OPENAI" OPENAI_MODEL="gpt-5.6" OPENAI_PLAN_MODEL="gpt-5.4-mini"
+npx supabase secrets set OPENAI_API_KEY="SUA_CHAVE_OPENAI" OPENAI_MODEL="gpt-5.6" OPENAI_VISION_MODEL="gpt-5.6" OPENAI_PLAN_MODEL="gpt-5.4-mini"
 npx supabase functions deploy food-estimate
+npx supabase functions deploy analyze-meal-image
 npx supabase functions deploy generate-plan
 npx supabase functions deploy meal-swaps
 npx supabase functions deploy nutritionist-reviews

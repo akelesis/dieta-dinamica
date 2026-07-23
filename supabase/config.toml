@@ -402,6 +402,11 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/transcribe-meal/deno.json"
 
+[functions.analyze-meal-image]
+enabled = true
+verify_jwt = true
+import_map = "./functions/analyze-meal-image/deno.json"
+
 [functions.create-checkout-session]
 enabled = true
 verify_jwt = true

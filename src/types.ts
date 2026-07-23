@@ -37,6 +37,21 @@ export interface FoodBreakdown {
   fat?: number
 }
 
+export interface DetectedMealItem {
+  name: string
+  quantity: number
+  unit: string
+  confidence: 'low' | 'medium' | 'high'
+}
+
+export interface MealImageAnalysis {
+  items: DetectedMealItem[]
+  confidence: 'low' | 'medium' | 'high'
+  note: string
+  question: string
+  model: string
+}
+
 export interface MealEntry {
   id: string
   time: string
